@@ -1,0 +1,49 @@
+#!/usr/bin/env python3
+"""
+bin/penelope-cloc — Comment Density Audit Harness for penelope
+"""
+import sys, os, glob, argparse
+
+REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+
+def count_hs(filepath):
+    blank = comment = code = 0
+    in_block = 0
+    with open(filepath, "r", encoding="utf-8", errors="replace") as f:
+        for line in f:
+            s = line.strip()
+            if not s: blank += 1; continue
+            i = 0
+            line_has_comment = line_has_code = False
+            while i < len(s):
+                if in_block > 0:
+                    if s[i:i+2] == "-}": in_block -= 1; i += 2; line_has_comment = True
+                    elif s[i:i+2] == "{-": in_block += 1; i += 2; line_has_comment = True
+                    else: i += 1; line_has_comment = True
+                else:
+                    if s[i:i+2] == "--": line_has_comment = True; break
+                    elif s[i:i+2] == "{-": in_block += 1; i += 2; line_has_comment = True
+                    else: line_has_code = True; i += 1
+            if line_has_comment and not line_has_code: comment += 1
+            elif line_has_code: code += 1
+            elif line_has_comment: comment += 1
+            else: blank += 1
+    return blank, comment, code
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--quiet", "-q", action="store_true")
+    parser.add_argument("--check", action="store_true", default=True)
+    args = parser.parse_args()
+    src_files = glob.glob(os.path.join(REPO_ROOT, "packages", "*", "src", "**", "*.hs"), recursive=True)
+    tot_comment = tot_code = 0
+    for f in src_files:
+        _, com, cod = count_hs(f)
+        tot_comment += com; tot_code += cod
+    density = (tot_comment / (tot_comment + tot_code) * 100.0) if (tot_comment + tot_code) > 0 else 0.0
+    if args.check and density < 25.0:
+        print(f"Comment density gate FAILED: {density:.1f}% < 25.0% threshold", file=sys.stderr)
+        sys.exit(1)
+    print(f"{density:.1f}% ({tot_comment} comments / {tot_code} code lines in src/; target: 50.0%+)")
+
+if __name__ == '__main__': main()

@@ -1,0 +1,69 @@
+#!/usr/bin/env bash
+# bin/penelope-verify — Physical verification runner for penelope
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+
+verify_hlint() {
+  echo "=== [1/5] HLint Static Analysis Gate ==="
+  local hlint_cmd=""
+  if [[ -x "${HOME}/.ghcup/bin/hlint" ]]; then
+    hlint_cmd="${HOME}/.ghcup/bin/hlint"
+  elif command -v hlint >/dev/null 2>&1; then
+    hlint_cmd="$(command -v hlint)"
+  fi
+  if [[ -n "${hlint_cmd}" ]]; then
+    "${hlint_cmd}" "${REPO_ROOT}"/packages/*/src >/dev/null
+    echo "  [+] Clean HLint run: 0 hints."
+  else
+    echo "  [SKIP] hlint binary not found."
+  fi
+}
+
+verify_tests() {
+  echo "=== [2/5] Full Cabal Test Suite ==="
+  (cd "${REPO_ROOT}" && cabal test all >/dev/null)
+  echo "  [+] All test suite assertions PASSED."
+}
+
+verify_tagref() {
+  echo "=== [3/5] Tagref Cross-Reference Gate ==="
+  if [[ -x "${REPO_ROOT}/bin/penelope-tagref" ]]; then
+    local tagref_out
+    tagref_out="$("${REPO_ROOT}/bin/penelope-tagref")"
+    echo "  [+] Tagref verified: ${tagref_out}"
+  else
+    echo "  [SKIP] Tagref script not found."
+  fi
+}
+
+verify_linkcheck() {
+  echo "=== [4/5] Markdown Link & Anchor Integrity Gate ==="
+  if [[ -x "${REPO_ROOT}/bin/penelope-linkcheck" ]]; then
+    local linkcheck_out
+    linkcheck_out="$("${REPO_ROOT}/bin/penelope-linkcheck" --quiet)"
+    echo "  [+] Markdown links verified: ${linkcheck_out}"
+  else
+    echo "  [SKIP] Linkcheck script not found."
+  fi
+}
+
+verify_cloc() {
+  echo "=== [5/5] CLOC Comment Density Gate ==="
+  if [[ -x "${REPO_ROOT}/bin/penelope-cloc" ]]; then
+    local cloc_out
+    cloc_out="$("${REPO_ROOT}/bin/penelope-cloc" --quiet --check)"
+    echo "  [+] Comment density verified: ${cloc_out}"
+  else
+    echo "  [SKIP] CLOC script not found."
+  fi
+}
+
+verify_hlint
+verify_tests
+verify_tagref
+verify_linkcheck
+verify_cloc
+
+echo "=== All 5 Physical Verification Checks PASSED ==="

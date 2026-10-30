@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+# bin/generate-tags — Fast symbol indexing for code navigation
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+TARGET_DIRS=("${REPO_ROOT}/packages")
+
+if command -v hasktags >/dev/null 2>&1; then
+  (cd "${REPO_ROOT}" && hasktags -c -x -f tags "${TARGET_DIRS[@]}")
+  echo "Tags generated successfully in ./tags"
+elif command -v ctags >/dev/null 2>&1; then
+  (cd "${REPO_ROOT}" && ctags -R -f tags "${TARGET_DIRS[@]}")
+  echo "Tags generated successfully in ./tags"
+else
+  echo "[WARN] Neither hasktags nor ctags found on PATH."
+fi

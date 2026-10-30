@@ -1,0 +1,11 @@
+-- cabal.project.local.example — Local developer configuration template
+-- Copy to cabal.project.local for machine-specific overrides (git-ignored)
+
+-- Optional: Override default compiler
+-- with-compiler: ghc-9.14.1
+
+-- Optional: Enable documentation generation during builds
+-- documentation: True
+
+-- Optional: Verbose compiler output
+-- verbose: 1

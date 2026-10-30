@@ -1,0 +1,23 @@
+#!/bin/sh
+# commit-msg: enforce sarutahiko AI-attribution convention.
+set -u
+
+msg_file=$1
+[ -f "$msg_file" ] || exit 0
+
+trailers=$(git interpret-trailers --parse < "$msg_file" 2>/dev/null) || exit 0
+status=0
+err() { printf 'commit-msg: %s\n' "$*" >&2; status=1; }
+
+# Reject robot emoji
+if grep -q '🤖' "$msg_file"; then
+  err "robot emoji in message; delete it."
+fi
+
+# Reject Co-authored-by for AI assistants
+ai_names='copilot|chatgpt|gpt-[0-9]|codex|cursor|gemini|llama|qwen|deepseek|mistral|claude|anthropic|openai|aider|devin|codebuff|freebuff|buffy|space[ _-]?bunny|antigravity|noreply@|\[bot\]|@bot\b'
+if printf '%s\n' "$trailers" | grep -Ei "^[[:space:]]*(Co-authored-by|Co-developed-by|Signed-off-by):.*($ai_names)"; then
+  err "Co-authored-by:/Signed-off-by: naming an AI assistant. Use 'Assisted-by: <Tool> (<Provider> / <Model>)' instead."
+fi
+
+exit $status

@@ -1,0 +1,21 @@
+#!/bin/sh
+# .githooks/pre-commit: mechanically enforce tagref and link integrity.
+set -eu
+
+REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+
+if [ -x "${REPO_ROOT}/bin/penelope-tagref" ]; then
+  if ! "${REPO_ROOT}/bin/penelope-tagref"; then
+    printf '\npre-commit: Tagref cross-reference check failed.\n' >&2
+    exit 1
+  fi
+fi
+
+if [ -x "${REPO_ROOT}/bin/penelope-linkcheck" ]; then
+  if ! "${REPO_ROOT}/bin/penelope-linkcheck" --quiet; then
+    printf '\npre-commit: Markdown link & anchor check failed.\n' >&2
+    exit 1
+  fi
+fi
+
+exit 0

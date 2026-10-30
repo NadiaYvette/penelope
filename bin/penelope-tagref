@@ -1,0 +1,61 @@
+#!/usr/bin/env bash
+# bin/penelope-tagref — Mechanical Tagref Cross-Reference Verification Harness
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+
+if command -v tagref >/dev/null 2>&1; then
+  (cd "${REPO_ROOT}" && tagref "$@")
+else
+  REPO_ROOT="${REPO_ROOT}" python3 - <<'EOF'
+import sys, os, re, subprocess
+
+repo_root = os.environ.get("REPO_ROOT", os.getcwd())
+ignore_rules = ["bin/penelope-tagref", ".githooks"]
+tag_regex = re.compile(r"\[tag:([a-zA-Z0-9_\-]+)\]")
+ref_regex = re.compile(r"\[ref:([a-zA-Z0-9_\-]+)\]")
+
+try:
+    git_files = subprocess.check_output(["git", "ls-files"], cwd=repo_root, text=True).splitlines()
+except Exception:
+    git_files = []
+
+if not git_files:
+    for root, dirs, files in os.walk(repo_root):
+        dirs[:] = [d for d in dirs if d not in (".git", "dist-newstyle")]
+        for f in files:
+            git_files.append(os.path.relpath(os.path.join(root, f), repo_root))
+
+tags = {}
+refs = []
+scanned = 0
+
+for rel_path in git_files:
+    if any(rel_path == rule or rel_path.startswith(rule.rstrip("/") + "/") for rule in ignore_rules):
+        continue
+    abs_path = os.path.join(repo_root, rel_path)
+    try:
+        with open(abs_path, "r", encoding="utf-8", errors="ignore") as f:
+            scanned += 1
+            for lineno, line in enumerate(f, 1):
+                for match in tag_regex.finditer(line):
+                    t = match.group(1)
+                    if t in tags:
+                        print(f"Error: duplicate tag '{t}' in {rel_path}:{lineno}", file=sys.stderr)
+                        sys.exit(1)
+                    tags[t] = f"{rel_path}:{lineno}"
+                for match in ref_regex.finditer(line):
+                    refs.append((match.group(1), f"{rel_path}:{lineno}"))
+    except Exception:
+        continue
+
+dangling = [f"Error: dangling reference '{r}' at {loc}" for r, loc in refs if r not in tags]
+if dangling:
+    for d in dangling:
+        print(d, file=sys.stderr)
+    sys.exit(1)
+
+print(f"{len(tags)} tags, 0 group members, {len(refs)} references validated in {scanned} files.")
+EOF
+fi

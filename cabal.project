@@ -1,0 +1,9 @@
+packages:
+  packages/*/
+
+with-compiler: ghc-9.14.1
+write-ghc-environment-files: always
+
+package *
+  ghc-options: -Wall -Wcompat -Wredundant-constraints
+  haddock-options: -w

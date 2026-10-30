@@ -1,0 +1,24 @@
+# <summary line>                                                     (max 72 chars)
+#
+# <Why this change, what problem it solves, what it rules out. The 'why',
+#  not the 'what' -- the diff already says what. Delete these comment lines;
+#  git strips them when the message is edited.>
+#
+# -- AI attribution (sarutahiko convention) -----------------------------------
+# If any AI coding assistant or orchestrator took part in authoring the change,
+# add standard git trailers:
+#
+#     Assisted-by: <Tool> (<Provider> / <Model>)
+#     Orchestrated-by: <Engine>
+#
+# Examples:
+#     Assisted-by: Antigravity (Google / gemini-3.8-pro)
+#     Assisted-by: Freebuff
+#     Orchestrated-by: Yamaarashi Flow Task Runner
+#
+# Do NOT use Co-authored-by: or Co-developed-by: for an assistant -- those
+# claim legal authorship and certify the Developer Certificate of Origin, which
+# only a human can do. Never add Signed-off-by: on an AI's behalf.
+#
+# A commit written entirely by a human needs no AI trailer.
+# See docs/notes/COMMIT_ATTRIBUTION.md for details.

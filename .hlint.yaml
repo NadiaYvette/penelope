@@ -1,0 +1,14 @@
+# .hlint.yaml — Ecosystem HLint Configuration
+# Zero-hint cleanliness policy enforced across all source files.
+
+- arguments:
+    - -XOverloadedRecordDot
+    - -XDataKinds
+    - -XTypeOperators
+    - -XTypeApplications
+
+- warn:
+    name: "Use OverloadedRecordDot"
+    lhs: "getField @a x"
+    rhs: "x.a"
+    note: "Prefer native OverloadedRecordDot syntax over explicit getField"
