@@ -15,6 +15,7 @@ Welcome to the `penelope` technical documentation corpus.
 ## Design Notes & Research Transcripts
 
 - [`PENELOPE_DESIGN.md`](notes/PENELOPE_DESIGN.md) — Canonical design notes.
+- [`IMPLEMENTATION_PLAN.md`](notes/IMPLEMENTATION_PLAN.md) — Canonical implementation plan.
 - [`DOC_STRATEGY.md`](notes/DOC_STRATEGY.md) — Documentation strategy and precedence rules.
 - [`COMMIT_ATTRIBUTION.md`](notes/COMMIT_ATTRIBUTION.md) — Commit attribution standards.
 - [`transcripts/penelope-effect-system.md`](transcripts/penelope-effect-system.md) — Canonical transcript and implementation plan for $(m,n,k,r)$-ary polycategorical effect system.
