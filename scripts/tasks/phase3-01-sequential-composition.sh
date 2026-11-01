@@ -131,7 +131,7 @@ import Data.Primitive.SmallArray
   , writeSmallArray
   )
 import GHC.Exts (Word (..), unsafeCoerce#)
-import Penelope.Core.Route (fuseRoute)
+import Penelope.Core.Route (fuseRoute, isIdentityRowMorph)
 import Penelope.Core.Syntax
   ( BranchCont (..)
   , Penelope (..)
@@ -139,12 +139,12 @@ import Penelope.Core.Syntax
   , PolyHEffect
   , Region (..)
   )
-import Polytropos.Core (Record, Rep (..), RowOf, RowRep (..))
+import Polytropos (Record, RowOf)
+import Polytropos.Core (Rep (..), RowRep (..))
 import Polytropos.RowMorph
   ( RowMorph (..)
   , composeRowMorph
   , indexRowMorph
-  , isIdentityRowMorph
   )
 import Unsafe.Coerce (unsafeCoerce)
 

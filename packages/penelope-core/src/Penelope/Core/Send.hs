@@ -46,7 +46,7 @@ and wires input ports via 'KnownRowMorph'.
 See Note [Unpacked Polycategorical Representation] [ref:note-unpacked-representation].
 -}
 sendPolyF ::
-  forall (l :: Symbol) (opIns :: RowOf (*)) (ins :: RowOf (*)) (exits :: Row) (eh :: RowOf PolyHEffect) (ef :: RowOf PolyEffect) (outs :: RowOf (*)).
+  forall (l :: Symbol) (opIns :: RowOf Type) (ins :: RowOf Type) (exits :: Row) (eh :: RowOf PolyHEffect) (ef :: RowOf PolyEffect) (outs :: RowOf Type).
   (ConstructorIndex l ef, KnownRowMorph opIns ins) =>
   Any
   -> Record exits
@@ -58,7 +58,7 @@ sendPolyF payload conts =
 
 -- | Typed payload variant of 'sendPolyF' applying 'unsafeCoerce#' without runtime boxing.
 sendPolyF' ::
-  forall (l :: Symbol) (opIns :: RowOf (*)) (ins :: RowOf (*)) (exits :: Row) op (eh :: RowOf PolyHEffect) (ef :: RowOf PolyEffect) (outs :: RowOf (*)).
+  forall (l :: Symbol) (opIns :: RowOf Type) (ins :: RowOf Type) (exits :: Row) op (eh :: RowOf PolyHEffect) (ef :: RowOf PolyEffect) (outs :: RowOf Type).
   (ConstructorIndex l ef, KnownRowMorph opIns ins) =>
   op
   -> Record exits
@@ -73,7 +73,7 @@ explicit sub-regions and multi-exit branch continuations.
 See Note [Unpacked Polycategorical Representation] [ref:note-unpacked-representation].
 -}
 sendPolyH ::
-  forall (l :: Symbol) (opIns :: RowOf (*)) (ins :: RowOf (*)) (regions :: Row) (exits :: Row) (eh :: RowOf PolyHEffect) (ef :: RowOf PolyEffect) (outs :: RowOf (*)).
+  forall (l :: Symbol) (opIns :: RowOf Type) (ins :: RowOf Type) (regions :: Row) (exits :: Row) (eh :: RowOf PolyHEffect) (ef :: RowOf PolyEffect) (outs :: RowOf Type).
   (ConstructorIndex l eh, KnownRowMorph opIns ins) =>
   Record regions
   -> Any
@@ -86,7 +86,7 @@ sendPolyH regions payload conts =
 
 -- | Typed payload variant of 'sendPolyH' applying 'unsafeCoerce#' without runtime boxing.
 sendPolyH' ::
-  forall (l :: Symbol) (opIns :: RowOf (*)) (ins :: RowOf (*)) (regions :: Row) (exits :: Row) op (eh :: RowOf PolyHEffect) (ef :: RowOf PolyEffect) (outs :: RowOf (*)).
+  forall (l :: Symbol) (opIns :: RowOf Type) (ins :: RowOf Type) (regions :: Row) (exits :: Row) op (eh :: RowOf PolyHEffect) (ef :: RowOf PolyEffect) (outs :: RowOf Type).
   (ConstructorIndex l eh, KnownRowMorph opIns ins) =>
   Record regions
   -> op
