@@ -297,9 +297,9 @@ main = hspec $ do
           fused = fuseRoute m1 m2
       case fused of
         _ -> (1 :: Int) `shouldBe` 1
+EOF
 
 echo "=== [yamaarashi] Milestone 2.2 implementation files written successfully ==="
-EOF
 
 chmod +x packages/penelope-core/test/Main.hs 2>/dev/null || true
 echo "=== [yamaarashi] Milestone 2.2 implementation script complete ==="
