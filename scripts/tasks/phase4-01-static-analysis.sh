@@ -188,6 +188,11 @@ seqStatic (StaticPenelope s1 p1) (StaticPenelope s2 p2) =
 -- | Frame-rule auto-wiring preserving and combining static metadata.
 {-# INLINE frameWireStatic #-}
 frameWireStatic ::
+  forall (frameIn :: RowOf Type) (ins1 :: RowOf Type) (outs1 :: RowOf Type)
+         (frameMid :: RowOf Type) (ins2 :: RowOf Type) (outs2 :: RowOf Type)
+         (frameOut :: RowOf Type)
+         (eh :: RowOf PolyHEffect) (ef :: RowOf PolyEffect)
+         f.
   ( Applicative f
   , FrameWire frameIn ins1 outs1 frameMid
   , FrameWire frameMid ins2 outs2 frameOut
@@ -196,7 +201,7 @@ frameWireStatic ::
   -> StaticPenelope f eh ef ins2 outs2
   -> StaticPenelope f eh ef frameIn frameOut
 frameWireStatic (StaticPenelope s1 p1) (StaticPenelope s2 p2) =
-  StaticPenelope (s1 *> s2) (p1 >&> p2)
+  StaticPenelope (s1 *> s2) ((>&>) @_ @_ @_ @frameMid p1 p2)
 
 {- |
 Construct a phantom port frame for traversing downstream continuations without evaluating payloads.
