@@ -1,0 +1,66 @@
+---
+id: phase6-04-benchmarks
+title: Allocation & Throughput Benchmarks
+description: |
+  Implement Milestone 6.4 of Phase 6 (Formal Verification, Soundness Certification & Benchmarking
+  per ~/src/penelope/PLAN.md §Phase 6 and docs/notes/IMPLEMENTATION_PLAN.md §Phase 6).
+  Certifies allocation bounds, memory residency (RSS), and runtime throughput via tasty-bench:
+
+  Architectural Invariants & Proof Obligations:
+  - Deep First-Order Effect Stacks (D = 30):
+    Verify that Penelope's vector dispatch via OpF and indexSmallArray# achieves strictly O(1)
+    constant-time dispatch invariant to effect row position (comparing Depth 1, Depth 15, and Depth 30),
+    with zero intermediate SmallArray# allocations per bind, contrasting with Freer union peeling
+    scaling linearly O(D) in time and heap allocations.
+  - Deep Higher-Order Scoped Elaboration (H = 15):
+    Verify single-pass bottom-up elaboration unrolling 15 scoped regions into pure first-order operations
+    in O(1) dispatch per OpH node, contrasting with multi-pass linear tree traversal.
+  - Wide Register Frames (m, n = 20 Ports):
+    Verify static RowMorph gather-scatter routing across 20 ports in O(1) flat pointer copies,
+    contrasting with linear record traversal.
+  - Surface Facades Throughput & Allocation:
+    Measure throughput and nursery allocations for Unary Eff and Binary Rope against pure baselines.
+  - Scoped Semantics & Delimited Continuations:
+    Measure local reader environment modification, catchError error boundary trapping, and
+    multi-shot coroutine resumption performance.
+  - Ground Note [Core Architecture] [ref:note-core-architecture],
+    Note [Unpacked Polycategorical Representation] [ref:note-unpacked-representation],
+    Note [Reified Row Morphisms and Gather-Scatter] [ref:note-row-morph-routing],
+    Note [Two-Phase Weaving and Unweaving] [ref:note-two-phase-engine], and
+    Note [Zero-Cost Surface Specializations] [ref:note-surface-facades].
+
+dependencies:
+  - phase6-03-scoped-semantics-concurrency
+
+packages:
+  - penelope-effects
+  - penelope-core
+
+executor: script
+model: gemini-3.8-flash-high
+skills:
+  - tricorder
+  - code-navigation
+  - contextful
+max_turns: 12
+run_budget: 600
+max_repair_attempts: 3
+
+steps:
+  - id: configure-cabal-benchmarks
+    name: Configure benchmark target in packages/penelope-effects/penelope-effects.cabal
+    action: |
+      Add `benchmark bench` stanza to `packages/penelope-effects/penelope-effects.cabal`
+      with `tasty-bench >= 0.3`, `rtsopts=-T`, and `-O2`.
+    duration: "10m"
+
+  - id: implement-benchmark-suite
+    name: Implement allocation and throughput benchmark suite in packages/penelope-effects/bench/Main.hs
+    action: |
+      Implement Criterion/Gauge compatible benchmarks via tasty-bench covering:
+      1. Deep first-order effect row (D = 30) O(1) vector dispatch vs Freer O(D) union peeling.
+      2. Deep higher-order scoped elaboration (H = 15) single-pass unrolling vs multi-pass tree traversal.
+      3. Wide register frames (m, n = 20 ports) static RowMorph gather-scatter vs list/record traversal.
+      4. Surface facades (Unary Eff & Binary Rope) throughput and nursery allocation vs pure baselines.
+      5. Scoped semantics and delimited continuations (local, catchError, runNonDet).
+    duration: "25m"
