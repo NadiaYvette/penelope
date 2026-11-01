@@ -26,6 +26,7 @@ library
   hs-source-dirs: src
   default-language: Haskell2010
   default-extensions:
+    AllowAmbiguousTypes
     BangPatterns
     DataKinds
     DerivingStrategies
@@ -58,6 +59,7 @@ test-suite tests
   hs-source-dirs: test
   default-language: Haskell2010
   default-extensions:
+    AllowAmbiguousTypes
     DataKinds
     GADTs
     MagicHash
@@ -86,6 +88,7 @@ cat <<'EOF' > packages/penelope-core/src/Penelope/Core/Send.hs
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE MagicHash #-}
 {-# LANGUAGE PolyKinds #-}
+{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
 
@@ -112,9 +115,10 @@ module Penelope.Core.Send
   ) where
 
 import GHC.Exts (Any, Word (W#), unsafeCoerce#)
-import Penelope.Core.Syntax (Penelope (..))
-import Polytropos (Record)
-import Polytropos.Core (ConstructorIndex (..))
+import GHC.TypeLits (Symbol)
+import Penelope.Core.Syntax (Penelope (..), PolyEffect, PolyHEffect)
+import Polytropos (Record, RowOf)
+import Polytropos.Core (ConstructorIndex (..), Row)
 import Polytropos.RowMorph (KnownRowMorph (..))
 
 {- |
@@ -125,7 +129,7 @@ and wires input ports via 'KnownRowMorph'.
 See Note [Unpacked Polycategorical Representation] [ref:note-unpacked-representation].
 -}
 sendPolyF ::
-  forall l opIns ins exits eh ef outs.
+  forall (l :: Symbol) (opIns :: RowOf (*)) (ins :: RowOf (*)) (exits :: Row) (eh :: RowOf PolyHEffect) (ef :: RowOf PolyEffect) (outs :: RowOf (*)).
   (ConstructorIndex l ef, KnownRowMorph opIns ins) =>
   Any
   -> Record exits
@@ -137,13 +141,13 @@ sendPolyF payload conts =
 
 -- | Typed payload variant of 'sendPolyF' applying 'unsafeCoerce#' without runtime boxing.
 sendPolyF' ::
-  forall l opIns ins exits op eh ef outs.
+  forall (l :: Symbol) (opIns :: RowOf (*)) (ins :: RowOf (*)) (exits :: Row) op (eh :: RowOf PolyHEffect) (ef :: RowOf PolyEffect) (outs :: RowOf (*)).
   (ConstructorIndex l ef, KnownRowMorph opIns ins) =>
   op
   -> Record exits
   -> Penelope eh ef ins outs
 {-# INLINE sendPolyF' #-}
-sendPolyF' op conts = sendPolyF @l (unsafeCoerce# op) conts
+sendPolyF' op conts = sendPolyF @l @opIns (unsafeCoerce# op) conts
 
 {- |
 Inject a higher-order scoped algebraic operation into the syntax tree with
@@ -152,7 +156,7 @@ explicit sub-regions and multi-exit branch continuations.
 See Note [Unpacked Polycategorical Representation] [ref:note-unpacked-representation].
 -}
 sendPolyH ::
-  forall l opIns ins regions exits eh ef outs.
+  forall (l :: Symbol) (opIns :: RowOf (*)) (ins :: RowOf (*)) (regions :: Row) (exits :: Row) (eh :: RowOf PolyHEffect) (ef :: RowOf PolyEffect) (outs :: RowOf (*)).
   (ConstructorIndex l eh, KnownRowMorph opIns ins) =>
   Record regions
   -> Any
@@ -165,14 +169,14 @@ sendPolyH regions payload conts =
 
 -- | Typed payload variant of 'sendPolyH' applying 'unsafeCoerce#' without runtime boxing.
 sendPolyH' ::
-  forall l opIns ins regions exits op eh ef outs.
+  forall (l :: Symbol) (opIns :: RowOf (*)) (ins :: RowOf (*)) (regions :: Row) (exits :: Row) op (eh :: RowOf PolyHEffect) (ef :: RowOf PolyEffect) (outs :: RowOf (*)).
   (ConstructorIndex l eh, KnownRowMorph opIns ins) =>
   Record regions
   -> op
   -> Record exits
   -> Penelope eh ef ins outs
 {-# INLINE sendPolyH' #-}
-sendPolyH' regions op conts = sendPolyH @l regions (unsafeCoerce# op) conts
+sendPolyH' regions op conts = sendPolyH @l @opIns regions (unsafeCoerce# op) conts
 EOF
 
 # 3. Update packages/penelope-core/src/Penelope/Core.hs to re-export Send
