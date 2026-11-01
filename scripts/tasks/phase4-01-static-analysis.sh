@@ -74,8 +74,9 @@ test-suite tests
     polytropos-core >= 0.1,
     polytropos-plugin >= 0.1,
     penelope-core >= 0.1,
-    penelope-static
 EOF
+
+mkdir -p packages/penelope-static/src/Penelope/Static packages/penelope-static/test
 
 # 2. Implement packages/penelope-static/src/Penelope/Static/Analysis.hs
 cat <<'EOF' > packages/penelope-static/src/Penelope/Static/Analysis.hs
