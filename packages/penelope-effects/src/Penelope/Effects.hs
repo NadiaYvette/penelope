@@ -2,7 +2,8 @@
 -- Description: Core implementation and facade re-exports for penelope-effects
 --
 -- This module provides foundational data structures and domain operations for 'penelope-effects',
--- re-exporting the Heftia unary monadic facade ('Eff').
+-- re-exporting the Heftia unary monadic facade ('Eff'), the Kernmantle binary arrow facade ('Rope'),
+-- and the standard effect battery ('Control', 'Coroutine', 'UnliftIO').
 --
 -- = Architectural Context
 --
@@ -31,11 +32,19 @@ module Penelope.Effects
     -- * Surface Facades
   , module Penelope.Effects.Unary
   , module Penelope.Effects.Binary
+
+    -- * Native Effect Battery
+  , module Penelope.Effects.Control
+  , module Penelope.Effects.Coroutine
+  , module Penelope.Effects.UnliftIO
   ) where
 
 import Data.Text (Text)
-import Penelope.Effects.Unary
 import Penelope.Effects.Binary
+import Penelope.Effects.Control
+import Penelope.Effects.Coroutine
+import Penelope.Effects.Unary
+import Penelope.Effects.UnliftIO
 
 -- | Represents a core domain entity within the 'penelope-effects' package.
 --

@@ -18,13 +18,17 @@ module Main (main) where
 import Control.Arrow (Arrow (..), ArrowChoice (..), (>>>))
 import Control.Category (Category (..))
 import Data.Functor.Identity (Identity (..))
-import Data.IORef (newIORef, readIORef, writeIORef)
+import Data.IORef (modifyIORef', newIORef, readIORef, writeIORef)
 import Data.Kind (Type)
 import Data.Primitive.SmallArray (indexSmallArray)
 import GHC.Exts (unsafeCoerce#)
+import Penelope.Core.Engine.Elaborate (elaborateAll)
+import Penelope.Core.Engine.Interpret (runPenelopePure)
+import Penelope.Core.Syntax (BranchCont (..), Penelope (..), PortSig (..), Region (..))
 import Penelope.Effects
 import Polytropos (Field (..), Record, Variant, emptyRecord, injectVariant, insertField)
 import Polytropos.Core (Pair (..), Rep (..), RowRep (..))
+import Polytropos.RowMorph (unsafeMkRowMorph)
 import Prelude hiding (id, (.))
 import Test.Hspec
 
@@ -188,3 +192,112 @@ main = hspec $ do
 
       runRopePure router v1 `shouldBe` "clicked:42"
       runRopePure router v2 `shouldBe` "key:q"
+
+  describe "Penelope.Effects.Control (While, Switch, Saga)" $ do
+    it "executes whileEff loop with state termination" $ do
+      let loop :: Eff '[] '[] Int
+          loop = whileEff (\s -> pure (s < 5)) (\s -> pure (s + 1)) (0 :: Int)
+      runEff loop `shouldBe` 5
+
+    it "elaborates and executes multi-region While loop to state termination" $ do
+      let condPipe :: Penelope '[] '[] '["x" ':= Int] '["cond" ':= Bool]
+          condPipe = LiftPure (unsafeMkRowMorph [0])
+            (\r ->
+              let !(Identity x) = indexSmallArray (let RowRep (Rep _ sArr) = r in sArr) 0
+                  !b = (unsafeCoerce# x :: Int) < 3
+              in insertField (Field @"cond") b emptyRecord
+            )
+            (BranchCont (\_ -> Route (unsafeMkRowMorph [0])))
+
+          bodyPipe :: Penelope '[] '[] '["x" ':= Int] '["x" ':= Int]
+          bodyPipe = LiftPure (unsafeMkRowMorph [0])
+            (\r ->
+              let !(Identity x) = indexSmallArray (let RowRep (Rep _ sArr) = r in sArr) 0
+                  !nextX = (unsafeCoerce# x :: Int) + 1
+              in insertField (Field @"x") nextX emptyRecord
+            )
+            (BranchCont (\_ -> Route (unsafeMkRowMorph [0])))
+
+          regs = insertField (Field @"cond") (Region @'[] @'[] @('PortSig '["x" ':= Int] '["cond" ':= Bool]) condPipe)
+               $ insertField (Field @"body") (Region @'[] @'[] @('PortSig '["x" ':= Int] '["x" ':= Int]) bodyPipe)
+               $ emptyRecord
+
+          retCont = BranchCont (\_ -> Route (unsafeMkRowMorph [0]))
+          exits = insertField (Field @"exit") retCont emptyRecord
+
+          whileTerm :: Penelope '["while" ':= While] '[] '["x" ':= Int] '["x" ':= Int]
+          whileTerm = OpH 0## (unsafeMkRowMorph [0]) regs (unsafeCoerce# ()) exits
+
+          elabs = insertField (Field @"while") whileElaborator emptyRecord
+          elaborated = elaborateAll elabs whileTerm
+
+          inFrame = insertField (Field @"x") (0 :: Int) emptyRecord
+          outFrame = runPenelopePure elaborated inFrame
+          !(Identity finalX) = indexSmallArray (let RowRep (Rep _ sArr) = outFrame in sArr) 0
+
+      (unsafeCoerce# finalX :: Int) `shouldBe` 3
+
+    it "executes transactional Saga committing on success and compensating on failure" $ do
+      let prog1 :: Eff '[] '[] (Either String Int)
+          prog1 = runSagaEff (pure ("action" :: String)) (\_ -> pure ()) (\_ -> pure (Right 42))
+
+          prog2 :: Eff '[] '[] (Either String Int)
+          prog2 = runSagaEff (pure ("action" :: String)) (\_ -> pure ()) (\_ -> pure (Left "err"))
+
+      runEff prog1 `shouldBe` Right 42
+      runEff prog2 `shouldBe` Left "err"
+
+  describe "Penelope.Effects.Coroutine (Delimited Continuations & Generator)" $ do
+    it "yields elements from generator to consumer cleanly" $ do
+      let gen :: Eff '[] '["yield" ':= UnaryEffect (YieldEff Int)] String
+          gen = do
+            yield @"yield" (10 :: Int)
+            yield @"yield" (20 :: Int)
+            yield @"yield" (30 :: Int)
+            pure "finished"
+          (yielded, res) = runGenerator gen
+      yielded `shouldBe` [10, 20, 30]
+      res `shouldBe` "finished"
+
+  describe "Penelope.Effects.UnliftIO (Scoped Resource Safety & Provider)" $ do
+    it "guarantees Bracket resource cleanup on success exit" $ do
+      ref <- newIORef ([] :: [String])
+      let acquire = do
+            writeIORef ref ["acquired"]
+            pure ("handle" :: String)
+          release _ =
+            modifyIORef' ref ("released" :)
+          action _ = do
+            modifyIORef' ref ("action" :)
+            pure (42 :: Int)
+
+      res <- bracketIO acquire release action
+      res `shouldBe` 42
+      logRes <- readIORef ref
+      logRes `shouldBe` ["released", "action", "acquired"]
+
+    it "guarantees Bracket resource cleanup on error exit" $ do
+      ref <- newIORef ([] :: [String])
+      let acquire = do
+            writeIORef ref ["acquired"]
+            pure ("handle" :: String)
+          release _ =
+            modifyIORef' ref ("released" :)
+          actionErr _ = do
+            modifyIORef' ref ("action-failed" :)
+            error "simulated failure" :: IO Int
+
+      (bracketIO acquire release actionErr >> pure ()) `shouldThrow` anyErrorCall
+      logRes <- readIORef ref
+      logRes `shouldBe` ["released", "action-failed", "acquired"]
+
+    it "supports pure bracketEitherEff error exit" $ do
+      let prog = bracketEitherEff (pure ("res" :: String)) (\_ -> pure ()) (\_ -> pure (Left "boom" :: Either String Int))
+      runEff prog `shouldBe` Left "boom"
+
+    it "injects dependencies via Provider purely" $ do
+      let prog :: Eff '[] '["provider" ':= UnaryEffect (ProviderEff String)] String
+          prog = do
+            env <- askProvider @"provider"
+            pure ("env:" <> env)
+      runProviderPure "production" prog `shouldBe` "env:production"
