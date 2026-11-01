@@ -1,0 +1,79 @@
+---
+id: phase6-03-scoped-semantics-concurrency
+title: Heftia Scoped Semantics & Concurrency Test Suite
+description: |
+  Implement Milestone 6.3 of Phase 6 (Formal Verification, Soundness Certification & Benchmarking
+  per ~/src/penelope/PLAN.md §Phase 6 and docs/notes/IMPLEMENTATION_PLAN.md §Phase 6).
+  Certifies scoped effect semantics and concurrent execution isolation:
+
+  Architectural Invariants & Proof Obligations:
+  - Scoped Reader & Local Semantics:
+    Verify nested `local` modifications and environment restoration across pure and effectful runs.
+  - Scoped Error & Catch Boundaries:
+    Verify dynamic error interception, recovery, and continuation splicing via `catchError`.
+  - Higher-Order Scoped Elaboration:
+    Verify that higher-order `Local` and `Catch` operations unrolled via `elaborateAll` into first-order
+    `OpF` nodes preserve exact scoped semantics prior to interpretation.
+  - Delimited Continuation & Suspension Soundness:
+    Verify that coroutines yielding from within `local` or `catchError` scopes never leak environment
+    handles or corrupt handler state across step-by-step resumptions.
+  - Multi-Shot Non-Deterministic Isolation:
+    Verify that alternative non-deterministic execution branches (`branch`) under `local` evaluate in
+    complete isolation without state corruption or cross-talk.
+  - Asynchronous Concurrency Safety:
+    Verify lightweight background worker execution (`forkEff`), parallel task execution (`asyncEff`),
+    and joined result gathering (`waitEff`) with complete exception propagation.
+  - Resource Safety under Concurrency:
+    Verify balanced resource acquisition and release across concurrent tasks without handle leakage.
+  - Ground Note [Core Architecture] [ref:note-core-architecture],
+    Note [Zero-Cost Surface Specializations] [ref:note-surface-facades], and
+    Note [Two-Phase Weaving and Unweaving] [ref:note-two-phase-engine].
+
+dependencies:
+  - phase6-02-reduct-properties
+
+packages:
+  - penelope-effects
+  - penelope-core
+
+executor: script
+model: gemini-3.8-flash-high
+skills:
+  - tricorder
+  - code-navigation
+  - contextful
+max_turns: 12
+run_budget: 600
+max_repair_attempts: 3
+
+steps:
+  - id: implement-scoped-and-concurrent
+    name: Implement Scoped and Concurrent modules in packages/penelope-effects
+    action: |
+      Implement `Penelope.Effects.Scoped` and `Penelope.Effects.Concurrent`, export them
+      in `Penelope.Effects`, and expose them in `penelope-effects.cabal`.
+    duration: "25m"
+
+  - id: implement-test-suite
+    name: Implement Heftia scoped semantics and concurrency test suite in packages/penelope-effects/test/Main.hs
+    action: |
+      In `packages/penelope-effects/test/Main.hs`:
+      1. Test `Reader` / `Local` pure and nested evaluation.
+      2. Test `Error` / `Catch` recovery and interception.
+      3. Test higher-order `Local` and `Catch` unrolling via `elaborateAll`.
+      4. Test `Concurrent` async parallel execution and exception safety.
+      5. Test `Coroutine` + `Local` and `Coroutine` + `Catch` interaction across suspension.
+      6. Test Multi-Shot `NonDet` + `Local` and Multi-Shot `NonDet` + `Bracket` isolation.
+    duration: "30m"
+
+  - id: verify-gate
+    name: Run verification gate
+    action: |
+      Run `cabal test penelope-effects:test:tests` and execute `sh scripts/tasks/phase6-03-scoped-semantics-concurrency-verify.sh`.
+    duration: "10m"
+
+success_criteria:
+  - Package `penelope-effects` builds warning-free under `-Wall -Wcompat -Wredundant-constraints`.
+  - All test suite assertions pass (0 failures).
+  - Note [Core Architecture] [ref:note-core-architecture], Note [Zero-Cost Surface Specializations] [ref:note-surface-facades], and Note [Two-Phase Weaving and Unweaving] [ref:note-two-phase-engine] referenced in source.
+  - Zero forbidden partial functions in `packages/penelope-effects/src/`.
