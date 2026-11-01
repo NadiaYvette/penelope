@@ -136,7 +136,7 @@ sendPolyF ::
   -> Penelope eh ef ins outs
 {-# INLINE sendPolyF #-}
 sendPolyF payload conts =
-  case constructorIndex of
+  case constructorIndex @_ @l @ef of
     W# tag# -> OpF tag# (rowMorph @opIns @ins) payload conts
 
 -- | Typed payload variant of 'sendPolyF' applying 'unsafeCoerce#' without runtime boxing.
@@ -164,7 +164,7 @@ sendPolyH ::
   -> Penelope eh ef ins outs
 {-# INLINE sendPolyH #-}
 sendPolyH regions payload conts =
-  case constructorIndex of
+  case constructorIndex @_ @l @eh of
     W# tag# -> OpH tag# (rowMorph @opIns @ins) regions payload conts
 
 -- | Typed payload variant of 'sendPolyH' applying 'unsafeCoerce#' without runtime boxing.
