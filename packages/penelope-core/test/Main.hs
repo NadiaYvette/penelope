@@ -407,3 +407,67 @@ main = hspec $ do
           Identity outFrame = runFrameKleisli kleisli inFrame
           !(Identity xVal) = indexSmallArray (let RowRep (Rep _ arr) = outFrame in arr) 0
       (unsafeCoerce# xVal :: Int) `shouldBe` 99
+
+  describe "Penelope.Core.Engine.Partial" $ do
+    it "peels target effect via interpretSub leaving residual effect in AST" $ do
+      let retCont = BranchCont (\_ -> route @'["x" ':= Int] @'["x" ':= Int])
+          conts = insertField (Field @"ret") retCont emptyRecord
+          opPut :: Penelope '[] TestEFExtended '["x" ':= Int] '["x" ':= Int]
+          opPut = sendPolyF' @"put" @'["x" ':= Int] (100 :: Int) conts
+
+          getHandler :: Handler '["put" ':= TestPut, "extra" ':= TestGet] (Penelope '[] '["put" ':= TestPut, "extra" ':= TestGet]) TestGet
+          getHandler = Handler $ \inMap _payload kConts ->
+            let !(Identity elabK) = indexSmallArray (let RowRep (Rep _ arr) = kConts in arr) 0
+                !(BranchCont retK) = unsafeCoerce# elabK
+                resFrame = insertField (Field @"x") (42 :: Int) emptyRecord
+            in preComposeRoute inMap (retK resFrame)
+
+          handlers = insertField (Field @"get") getHandler emptyRecord
+          peeled :: Penelope '[] '["put" ':= TestPut, "extra" ':= TestGet] '["x" ':= Int] '["x" ':= Int]
+          peeled = interpretSub @'["get" ':= TestGet] @'["put" ':= TestPut, "extra" ':= TestGet] @TestEFExtended handlers opPut
+
+      case peeled of
+        OpF tag# _ _ _ -> do
+          case tag# of _ -> (1 :: Int) `shouldBe` 1
+        _ -> expectationFailure "Expected OpF constructor with remapped residual tag"
+
+    it "peeled computation can subsequently be interpreted by interpretAll" $ do
+      let retCont = BranchCont (\_ -> route @'["x" ':= Int] @'["x" ':= Int])
+          conts = insertField (Field @"ret") retCont emptyRecord
+          opPut :: Penelope '[] TestEFExtended '["x" ':= Int] '["x" ':= Int]
+          opPut = sendPolyF' @"put" @'["x" ':= Int] (100 :: Int) conts
+
+          getHandler :: Handler '["put" ':= TestPut, "extra" ':= TestGet] (Penelope '[] '["put" ':= TestPut, "extra" ':= TestGet]) TestGet
+          getHandler = Handler $ \inMap _payload kConts ->
+            let !(Identity elabK) = indexSmallArray (let RowRep (Rep _ arr) = kConts in arr) 0
+                !(BranchCont retK) = unsafeCoerce# elabK
+                resFrame = insertField (Field @"x") (42 :: Int) emptyRecord
+            in preComposeRoute inMap (retK resFrame)
+
+          handlers = insertField (Field @"get") getHandler emptyRecord
+          peeled :: Penelope '[] '["put" ':= TestPut, "extra" ':= TestGet] '["x" ':= Int] '["x" ':= Int]
+          peeled = interpretSub @'["get" ':= TestGet] @'["put" ':= TestPut, "extra" ':= TestGet] @TestEFExtended handlers opPut
+
+          putHandlerFinal :: Handler '[] (FrameKleisli Identity) TestPut
+          putHandlerFinal = Handler $ \_inMap _payload kConts ->
+            let !(Identity elabK) = indexSmallArray (let RowRep (Rep _ arr) = kConts in arr) 0
+                !(BranchCont retK) = unsafeCoerce# elabK
+                resFrame = insertField (Field @"x") (77 :: Int) emptyRecord
+            in FrameKleisli $ \_inF -> runFrameKleisli (retK resFrame) resFrame
+
+          extraHandlerFinal :: Handler '[] (FrameKleisli Identity) TestGet
+          extraHandlerFinal = Handler $ \_inMap _payload kConts ->
+            let !(Identity elabK) = indexSmallArray (let RowRep (Rep _ arr) = kConts in arr) 0
+                !(BranchCont retK) = unsafeCoerce# elabK
+            in FrameKleisli $ \inF -> runFrameKleisli (retK emptyRecord) inF
+
+          handlersFinal = insertField (Field @"put") putHandlerFinal
+                        $ insertField (Field @"extra") extraHandlerFinal
+                        $ emptyRecord
+
+          kleisli = interpretAll handlersFinal peeled
+          inFrame = insertField (Field @"x") (0 :: Int) emptyRecord
+          Identity outFrame = runFrameKleisli kleisli inFrame
+          !(Identity xVal) = indexSmallArray (let RowRep (Rep _ arr) = outFrame in arr) 0
+      (unsafeCoerce# xVal :: Int) `shouldBe` 77
+

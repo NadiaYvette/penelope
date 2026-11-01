@@ -7,13 +7,15 @@ Maintainer  : nadia.yvette.chambers@ik.me
 Stability   : experimental
 Portability : non-portable (GHC extensions)
 
-Provides execution engines for Penelope: Phase 1 elaboration and Phase 2 interpretation.
+Provides execution engines for Penelope: Phase 1 elaboration, Phase 2 interpretation, and partial peeling.
 See Note [Two-Phase Weaving and Unweaving] [ref:note-two-phase-engine].
 -}
 module Penelope.Core.Engine
   ( module Penelope.Core.Engine.Elaborate
   , module Penelope.Core.Engine.Interpret
+  , module Penelope.Core.Engine.Partial
   ) where
 
 import Penelope.Core.Engine.Elaborate
 import Penelope.Core.Engine.Interpret
+import Penelope.Core.Engine.Partial
