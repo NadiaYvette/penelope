@@ -468,9 +468,8 @@ main = hspec $ do
       case comp of
         OpF _ _ _ _ -> (1 :: Int) `shouldBe` 1
         _           -> expectationFailure "Expected OpF constructor"
-
-echo "=== [yamaarashi] Milestone 3.1 setup complete ==="
 EOF
 
+echo "=== [yamaarashi] Milestone 3.1 setup complete ==="
 chmod +x packages/penelope-core/src/Penelope/Core/Wiring.hs || true
 chmod +x scripts/tasks/phase3-01-sequential-composition.sh || true
