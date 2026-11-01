@@ -15,9 +15,11 @@ module Penelope.Core
   , module Penelope.Core.Route
   , module Penelope.Core.Send
   , module Penelope.Core.Wiring
+  , module Penelope.Core.Engine
   ) where
 
 import Penelope.Core.Syntax
 import Penelope.Core.Route
 import Penelope.Core.Send
 import Penelope.Core.Wiring
+import Penelope.Core.Engine

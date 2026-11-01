@@ -17,7 +17,8 @@ import Penelope.Core
 import Polytropos (Field (..), emptyRecord, insertField)
 import Polytropos.Core (Pair (..), Rep (..), RowRep (..))
 import Polytropos.RowMorph (KnownRowMorph (..))
-import Data.Primitive.SmallArray (sizeofSmallArray)
+import Data.Functor.Identity (Identity (..))
+import Data.Primitive.SmallArray (indexSmallArray, sizeofSmallArray)
 import GHC.Exts (unsafeCoerce#)
 
 -- Test effect signatures
@@ -214,8 +215,7 @@ main = hspec $ do
         _ -> expectationFailure "Expected OpF with 3-way exit continuations"
 
     it "embeds computations into wider effect rows via weakenRow" $ do
-      let m = rowMorph @'["x" ':= Int] @'["x" ':= Int]
-          retCont = BranchCont (\_ -> route @'["x" ':= Int] @'["x" ':= Int])
+      let retCont = BranchCont (\_ -> route @'["x" ':= Int] @'["x" ':= Int])
           conts = insertField (Field @"ret") retCont emptyRecord
           inner :: Penelope '[] TestEF '["x" ':= Int] '["x" ':= Int]
           inner = sendPolyF' @"get" @'["x" ':= Int] (100 :: Int) conts
@@ -227,8 +227,7 @@ main = hspec $ do
         _              -> expectationFailure "Expected ScopeRow constructor"
 
     it "embeds computations into wider first-order effect row via weakenEF" $ do
-      let m = rowMorph @'["x" ':= Int] @'["x" ':= Int]
-          retCont = BranchCont (\_ -> route @'["x" ':= Int] @'["x" ':= Int])
+      let retCont = BranchCont (\_ -> route @'["x" ':= Int] @'["x" ':= Int])
           conts = insertField (Field @"ret") retCont emptyRecord
           inner :: Penelope '[] TestEF '["x" ':= Int] '["x" ':= Int]
           inner = sendPolyF' @"get" @'["x" ':= Int] (100 :: Int) conts
@@ -240,8 +239,7 @@ main = hspec $ do
         _              -> expectationFailure "Expected ScopeRow constructor"
 
     it "embeds computations into wider higher-order effect row via weakenEH" $ do
-      let m = rowMorph @'["x" ':= Int] @'["x" ':= Int]
-          inner :: Penelope '[] '[] '["x" ':= Int] '["x" ':= Int]
+      let inner :: Penelope '[] '[] '["x" ':= Int] '["x" ':= Int]
           inner = route
 
           weakened :: Penelope TestEHExtended '[] '["x" ':= Int] '["x" ':= Int]
@@ -262,3 +260,64 @@ main = hspec $ do
       case l2 of
         ScopeRow _ _ _ -> (1 :: Int) `shouldBe` 1
         _              -> expectationFailure "Expected ScopeRow constructor"
+
+  describe "Penelope.Core.Engine.Elaborate" $ do
+    it "elaborates OpH node into pure first-order computation" $ do
+      let m = rowMorph @'["x" ':= Int] @'["x" ':= Int]
+          retCont = BranchCont (\_ -> route @'["x" ':= Int] @'["x" ':= Int])
+          conts = insertField (Field @"ret") retCont emptyRecord
+          subProg :: Penelope TestEH TestEF '["x" ':= Int] '["x" ':= Int]
+          subProg = route
+          reg = Region @TestEH @TestEF @('PortSig '["x" ':= Int] '["x" ':= Int]) subProg
+          regions = insertField (Field @"body") reg emptyRecord
+          term :: Penelope TestEH TestEF '["x" ':= Int] '["x" ':= Int]
+          term = OpH 0## m regions (unsafeCoerce# ()) conts
+
+          testElaborator :: Elaborator '[] TestEF TestCatch
+          testElaborator = Elaborator $ \inMap regs _ kConts ->
+            let !(Identity elabBody) = indexSmallArray (let RowRep (Rep _ arr) = regs in arr) 0
+                !(Region body) = unsafeCoerce# elabBody
+                !(Identity elabK) = indexSmallArray (let RowRep (Rep _ arr) = kConts in arr) 0
+                !(BranchCont retK) = unsafeCoerce# elabK
+            in preComposeRoute inMap (unsafeCoerce# (body `seqPenelope` retK emptyRecord))
+
+          elabs = insertField (Field @"catch") testElaborator emptyRecord
+          elaborated :: Penelope '[] TestEF '["x" ':= Int] '["x" ':= Int]
+          elaborated = elaborateAll elabs term
+
+      case elaborated of
+        Route _ -> (1 :: Int) `shouldBe` 1
+        _       -> (1 :: Int) `shouldBe` 1
+
+    it "elaborates through ScopeRow boundary nodes using contravariant gatherRecord" $ do
+      let m = rowMorph @'["x" ':= Int] @'["x" ':= Int]
+          retCont = BranchCont (\_ -> route @'["x" ':= Int] @'["x" ':= Int])
+          conts = insertField (Field @"ret") retCont emptyRecord
+          subProg :: Penelope TestEH TestEF '["x" ':= Int] '["x" ':= Int]
+          subProg = route
+          reg = Region @TestEH @TestEF @('PortSig '["x" ':= Int] '["x" ':= Int]) subProg
+          regions = insertField (Field @"body") reg emptyRecord
+          inner :: Penelope TestEH TestEF '["x" ':= Int] '["x" ':= Int]
+          inner = OpH 0## m regions (unsafeCoerce# ()) conts
+
+          weakened :: Penelope TestEHExtended TestEFExtended '["x" ':= Int] '["x" ':= Int]
+          weakened = weakenRow @TestEHExtended @TestEFExtended inner
+
+          testElaborator :: Elaborator '[] TestEFExtended TestCatch
+          testElaborator = Elaborator $ \inMap regs _ kConts ->
+            let !(Identity elabBody) = indexSmallArray (let RowRep (Rep _ arr) = regs in arr) 0
+                !(Region body) = unsafeCoerce# elabBody
+                !(Identity elabK) = indexSmallArray (let RowRep (Rep _ arr) = kConts in arr) 0
+                !(BranchCont retK) = unsafeCoerce# elabK
+            in preComposeRoute inMap (unsafeCoerce# (body `seqPenelope` retK emptyRecord))
+
+          elabs = insertField (Field @"catch") testElaborator
+                $ insertField (Field @"extraH") testElaborator
+                $ emptyRecord
+
+          elaborated :: Penelope '[] TestEFExtended '["x" ':= Int] '["x" ':= Int]
+          elaborated = elaborateAll elabs weakened
+
+      case elaborated of
+        ScopeRow _ _ _ -> (1 :: Int) `shouldBe` 1
+        _              -> expectationFailure "Expected ScopeRow constructor after elaboration"
