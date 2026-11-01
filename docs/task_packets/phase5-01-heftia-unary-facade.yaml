@@ -1,0 +1,84 @@
+---
+id: phase5-01-heftia-unary-facade
+title: Implement the Heftia Unary Monad Facade (Eff)
+description: |
+  Implement Milestone 5.1 of Phase 5 (Surface Ergonomics & Compatibility Facades
+  per ~/src/penelope/PLAN.md §Phase 5 and docs/notes/IMPLEMENTATION_PLAN.md §Phase 5).
+  Establishes `Penelope.Effects.Unary` in `packages/penelope-effects`, providing the
+  `Eff eh ef a` unary monad facade over Penelope's (m,n,k,r)-ary core.
+
+  Architectural Context:
+  - Zero-Cost Surface Specialization: Unary monadic effect programming is projected directly
+    over the core engine with zero runtime overhead via a newtype wrapper:
+    `newtype Eff eh ef a = Eff { unEff :: Penelope eh ef '[] '["val" := a] }`
+    (Note [Zero-Cost Surface Specializations] [ref:note-surface-facades]).
+  - Standard Typeclasses: Implements lawful `Functor`, `Applicative`, and `Monad` instances
+    via sequential wiring `(>>>)` and Coyoneda leaf continuation fusion.
+  - GADT Embedding Adapters: Provides translation functions lifting standard unary effect GADTs
+    (`f :: Type -> Type`) into poly-kinded `PolyEffect` rows.
+  - Runner Functions: `runEff :: Eff '[] '[] a -> a` and
+    `runEffM :: Monad m => Record (Handler '[] m) ef -> Eff '[] ef a -> m a`.
+  - Ground Note [Zero-Cost Surface Specializations] [ref:note-surface-facades].
+
+dependencies:
+  - phase3-01-sequential-composition
+  - phase4-02-higher-order-elaboration
+  - phase4-03-vector-interpretation
+
+packages:
+  - penelope-effects
+
+executor: agy
+model: gemini-3.8-flash-high
+skills:
+  - tricorder
+  - code-navigation
+  - contextful
+max_turns: 12
+run_budget: 600
+max_repair_attempts: 3
+
+steps:
+  - id: update-cabal-dependencies
+    name: Add penelope-core and polytropos dependencies to penelope-effects
+    action: |
+      In `packages/penelope-effects/penelope-effects.cabal`:
+      1. Add `penelope-core >= 0.1`, `polytropos-core >= 0.1`, and `polytropos-plugin >= 0.1` to `build-depends`.
+      2. Expose `Penelope.Effects.Unary` and `Penelope.Effects` in `exposed-modules`.
+      3. Verify clean compilation with `cabal build penelope-effects`.
+    duration: "15m"
+
+  - id: implement-unary-facade
+    name: Implement Eff newtype, Functor/Applicative/Monad instances, and runners
+    action: |
+      In `packages/penelope-effects/src/Penelope/Effects/Unary.hs`:
+      1. Define `newtype Eff eh ef a = Eff { unEff :: Penelope eh ef '[] '["val" := a] }`.
+      2. Implement `Functor`, `Applicative`, and `Monad` instances.
+      3. Implement GADT lifting adapters for unary effects.
+      4. Implement `runEff` and `runEffM` executing via `interpretAll`.
+      5. Re-export unary facade from `packages/penelope-effects/src/Penelope/Effects.hs`.
+      6. Ground Note [Zero-Cost Surface Specializations] [ref:note-surface-facades].
+    duration: "45m"
+
+  - id: add-unary-facade-tests
+    name: Implement unit tests in packages/penelope-effects/test/Main.hs
+    action: |
+      In `packages/penelope-effects/test/Main.hs`:
+      1. Verify `Eff` satisfies monad laws (left identity, right identity, associativity).
+      2. Construct standard monadic do-notation blocks.
+      3. Run pure and effectful computations via `runEff` and `runEffM`.
+      4. Verify clean compilation under `-Wall -Wcompat -Wredundant-constraints`.
+    duration: "30m"
+
+  - id: verify-gate
+    name: Run verification gate
+    action: |
+      Run `cabal test penelope-effects:test:tests` and execute `sh scripts/tasks/phase5-01-heftia-unary-facade-verify.sh`.
+    duration: "10m"
+
+success_criteria:
+  - Package `penelope-effects` builds warning-free under `-Wall -Wcompat -Wredundant-constraints`.
+  - "'Eff' provides a standard monadic surface over the underlying polycategorical engine."
+  - All test assertions in `packages/penelope-effects/test/Main.hs` pass cleanly (0 failures).
+  - Note [Zero-Cost Surface Specializations] [ref:note-surface-facades] referenced in source.
+  - Zero forbidden partial functions in `packages/penelope-effects/src/`.

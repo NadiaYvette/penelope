@@ -1,0 +1,69 @@
+---
+id: phase3-02-frame-rule-wiring
+title: Implement Frame-Rule Automatic Port Wiring Combinator (>&>)
+description: |
+  Implement Milestone 3.2 of Phase 3 (Polycategorical Composition & The Frame Rule
+  per ~/src/penelope/PLAN.md §Phase 3 and docs/notes/IMPLEMENTATION_PLAN.md §Phase 3).
+  Extends `Penelope.Core.Wiring` in `packages/penelope-core` with the frame-rule
+  automatic port wiring combinator `(>&>)`.
+
+  Architectural Context:
+  - Frame-Rule Wiring:
+    `(>&>) :: (FrameWire frameIn ins1 outs1 frameMid, FrameWire frameMid ins2 outs2 frameOut) => Penelope eh ef ins1 outs1 -> Penelope eh ef ins2 outs2 -> Penelope eh ef frameIn frameOut`.
+  - Automatic Port Threading: Given `stage1` producing `outs1` and `stage2` requiring `ins2`
+    (a subset of `frameMid`), Penelope uses compile-time synthesized `FrameWire` to pull arguments
+    from the live register frame and write back results, leaving unmentioned frame ports untouched
+    (Note [Frame-Rule Automatic Wire Synthesis] [ref:note-frame-rule-wiring]).
+  - Zero-Cost passthrough: Frame slots unaffected by individual pipeline stages are preserved in
+    $O(|frame|)$ time without manual tuple nesting (`(a, (b, c))`).
+  - Ground Note [Frame-Rule Automatic Wire Synthesis] [ref:note-frame-rule-wiring].
+
+dependencies:
+  - phase3-01-sequential-composition
+
+packages:
+  - penelope-core
+
+executor: agy
+model: gemini-3.8-flash-high
+skills:
+  - tricorder
+  - code-navigation
+  - contextful
+max_turns: 12
+run_budget: 600
+max_repair_attempts: 3
+
+steps:
+  - id: implement-frame-rule-wiring
+    name: Implement frame-rule combinator (>&>)
+    action: |
+      In `packages/penelope-core/src/Penelope/Core/Wiring.hs`:
+      1. Implement `(>&>)` using `FrameWire` constraints solved by `Polytropos.Plugin`.
+      2. Synthesize pre-stage input gather routing and post-stage output scatter routing.
+      3. Re-export `(>&>)` from `packages/penelope-core/src/Penelope/Core.hs`.
+      4. Ground Note [Frame-Rule Automatic Wire Synthesis] [ref:note-frame-rule-wiring].
+    duration: "45m"
+
+  - id: add-frame-rule-wiring-tests
+    name: Implement unit tests in packages/penelope-core/test/Main.hs
+    action: |
+      In `packages/penelope-core/test/Main.hs`:
+      1. Construct multi-stage pipeline across a composite register frame (e.g. `'["x" := Int, "y" := Text, "z" := Bool]`).
+      2. Verify that stage 1 mutating `"x"` preserves `"y"` and `"z"` untouched.
+      3. Verify that stage 2 consuming `"x"` and `"y"` updates `"z"`.
+      4. Verify clean compilation under `-Wall -Wcompat -Wredundant-constraints`.
+    duration: "30m"
+
+  - id: verify-gate
+    name: Run verification gate
+    action: |
+      Run `cabal test penelope-core:test:tests` and execute `sh scripts/tasks/phase3-02-frame-rule-wiring-verify.sh`.
+    duration: "10m"
+
+success_criteria:
+  - Package `penelope-core` builds warning-free under `-Wall -Wcompat -Wredundant-constraints`.
+  - Frame-rule automatic port wiring `(>&>)` correctly threads and preserves untouched frame fields.
+  - All test assertions in `packages/penelope-core/test/Main.hs` pass cleanly (0 failures).
+  - Note [Frame-Rule Automatic Wire Synthesis] [ref:note-frame-rule-wiring] referenced in source.
+  - Zero forbidden partial functions in `packages/penelope-core/src/`.

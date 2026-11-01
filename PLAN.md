@@ -16,16 +16,16 @@ SPDX-License-Identifier: EUPL-1.2 OR Apache-2.0
 
 Ground the low-level row permutation, frame-rule solving, and poly-kinded row indexing primitives in upstream `polytropos`:
 
-- [ ] **Milestone 1.1: Reified Row Morphisms (`RowMorph`)**
+- [x] **Milestone 1.1: Reified Row Morphisms (`RowMorph`)** [COMPLETED in polytropos]
   - Implement unboxed representation `newtype RowMorph r1 r2 = RowMorph (PrimArray Int)` in `Polytropos.RowMorph`.
   - Extend `Polytropos.Plugin` to solve `KnownRowMorph r1 r2` and emit static unboxed CAF constants.
   - Implement primitive gather/scatter loops over `Polytropos.Core.Rep` (`gatherRep`, `scatterRep`).
   - Implement $O(|r1|)$ route composition (`composeRowMorph`).
-- [ ] **Milestone 1.2: Frame-Rule Unification Constraint Solver (`FrameWire`)**
+- [x] **Milestone 1.2: Frame-Rule Unification Constraint Solver (`FrameWire`)** [COMPLETED in polytropos]
   - Define `FramePlan` encoding input gather map, output scatter map, and untouched passthrough slots.
   - Extend `Polytropos.Plugin` to solve `FrameWire frameIn opIn opOut frameOut`, unifying with `RowOverwrite frameIn opOut`.
   - Defer unsolved `IsLabel` / `HasField` constraints when target rows are ununified `TyVarTy`s.
-- [ ] **Milestone 1.3: Poly-Kinded Effect Row Indexing**
+- [x] **Milestone 1.3: Poly-Kinded Effect Row Indexing** [COMPLETED in polytropos]
   - Generalize `FieldIndex` and `ConstructorIndex` in `Polytropos.Plugin` to support higher-kinded rows:
     - `Row PolyEffect` (`PolyEffect = Row Type -> Row (Row Type) -> Type`)
     - `Row PolyHEffect` (`PolyHEffect = (PortSig -> Type) -> Row PortSig -> Row Type -> Row (Row Type) -> Type`)

@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: EUPL-1.2 OR Apache-2.0
+# Helper wrapper for yamaarashi-exec within penelope
+
+set -euo pipefail
+
+# Ensure ~/.local/bin is in PATH
+export PATH="${HOME}/.local/bin:${PATH}"
+
+if ! command -v yamaarashi-exec >/dev/null 2>&1; then
+  echo "Error: yamaarashi-exec not found in PATH or ~/.local/bin." >&2
+  echo "Please install yamaarashi-exec from sarutahiko (cabal install exe:yamaarashi-exec --installdir=~/.local/bin)." >&2
+  exit 1
+fi
+
+exec yamaarashi-exec "$@"

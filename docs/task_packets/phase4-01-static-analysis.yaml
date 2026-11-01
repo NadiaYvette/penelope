@@ -1,0 +1,82 @@
+---
+id: phase4-01-static-analysis
+title: Implement Static Pre-Execution Cayley Analysis
+description: |
+  Implement Milestone 4.1 of Phase 4 (Two-Phase Weaving & Interpretation Engine
+  per ~/src/penelope/PLAN.md §Phase 4 and docs/notes/IMPLEMENTATION_PLAN.md §Phase 4).
+  Establishes `Penelope.Static.Analysis` in `packages/penelope-static`, providing static
+  hypergraph traversal, capability extraction, and per-port liveness analysis.
+
+  Architectural Context:
+  - Cayley Static Reflection: Because branch continuations and scoped sub-regions are explicit
+    GADT nodes outside opaque closures, Penelope can inspect and accumulate metadata prior
+    to execution without evaluating effectful payloads
+    (Note [Static Reflection and Cayley Analysis] [ref:note-static-cayley]).
+  - Static Accumulator:
+    `data StaticPenelope f eh ef ins outs = StaticPenelope !(f ()) !(Penelope eh ef ins outs)`
+  - Static Capabilities: Extracts database schemas, required capability strands, configuration
+    flags, and security policies from the computation graph.
+  - Per-Port Liveness Analysis: Computes exact input/output port lifetimes across `RowMorph`
+    permutations, determining the last-use site of each frame port to enable buffer reuse.
+  - Ground Note [Static Reflection and Cayley Analysis] [ref:note-static-cayley].
+
+dependencies:
+  - phase2-01-syntax-gadt
+
+packages:
+  - penelope-static
+
+executor: agy
+model: gemini-3.8-flash-high
+skills:
+  - tricorder
+  - code-navigation
+  - contextful
+max_turns: 12
+run_budget: 600
+max_repair_attempts: 3
+
+steps:
+  - id: update-cabal-dependencies
+    name: Add penelope-core and selective dependencies to penelope-static
+    action: |
+      In `packages/penelope-static/penelope-static.cabal`:
+      1. Add `penelope-core >= 0.1`, `polytropos-core >= 0.1`, and `containers >= 0.6` to `build-depends`.
+      2. Expose `Penelope.Static.Analysis` and `Penelope.Static` in `exposed-modules`.
+      3. Verify clean compilation with `cabal build penelope-static`.
+    duration: "15m"
+
+  - id: implement-static-analysis
+    name: Implement StaticPenelope, metadata accumulation, and liveness analysis
+    action: |
+      In `packages/penelope-static/src/Penelope/Static/Analysis.hs`:
+      1. Define `StaticPenelope f eh ef ins outs`.
+      2. Implement static AST traversal extracting effect manifests and capability sets.
+      3. Implement per-port liveness analysis over `RowMorph` routing edges.
+      4. Re-export static analysis primitives from `packages/penelope-static/src/Penelope/Static.hs`.
+      5. Ground Note [Static Reflection and Cayley Analysis] [ref:note-static-cayley].
+    duration: "45m"
+
+  - id: add-static-analysis-tests
+    name: Implement unit tests in packages/penelope-static/test/Main.hs
+    action: |
+      In `packages/penelope-static/test/Main.hs`:
+      1. Construct sample polycategorical pipelines with multiple effects and branching routes.
+      2. Extract static capability manifests and assert expected effects are identified.
+      3. Assert liveness analyzer correctly identifies port last-use lifetimes.
+      4. Verify clean compilation under `-Wall -Wcompat -Wredundant-constraints`.
+    duration: "30m"
+
+  - id: verify-gate
+    name: Run verification gate
+    action: |
+      Run `cabal test penelope-static:test:tests` and execute `sh scripts/tasks/phase4-01-static-analysis-verify.sh`.
+    duration: "10m"
+
+success_criteria:
+  - Package `penelope-static` builds warning-free under `-Wall -Wcompat -Wredundant-constraints`.
+  - Static Cayley analysis inspects AST structures prior to execution without evaluating runtime payloads.
+  - Per-port liveness analysis extracts accurate port lifetimes across `RowMorph` edges.
+  - All test assertions in `packages/penelope-static/test/Main.hs` pass cleanly (0 failures).
+  - Note [Static Reflection and Cayley Analysis] [ref:note-static-cayley] referenced in source.
+  - Zero forbidden partial functions in `packages/penelope-static/src/`.

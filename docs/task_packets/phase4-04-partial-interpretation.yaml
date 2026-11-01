@@ -1,0 +1,72 @@
+---
+id: phase4-04-partial-interpretation
+title: Implement Partial Layered Interpretation (interpretSub)
+description: |
+  Implement Milestone 4.4 of Phase 4 (Two-Phase Weaving & Interpretation Engine
+  per ~/src/penelope/PLAN.md §Phase 4 and docs/notes/IMPLEMENTATION_PLAN.md §Phase 4).
+  Establishes `Penelope.Core.Engine.Partial` in `packages/penelope-core`, providing
+  partial effect stack peeling and layered interpretation.
+
+  Architectural Context:
+  - Layered Effect Peeling: Enables interpreting an effect subset (`efSub`) into the computation
+    while leaving unhandled residual effects (`efRem`) intact in the syntax tree
+    (e.g., discharging pure `State` and `Reader` while leaving `IO` or `FileIO` for the outer runtime).
+  - Compile-Time Partitioning: Uses `RowPartition` from `Polytropos.Plugin` to decompose the
+    effect row `efFull` into disjoint sub-rows `efSub` and `efRem` without linear search cascades
+    (Note [Two-Phase Weaving and Unweaving] [ref:note-two-phase-engine]).
+  - Unhandled Effect Passthrough: Unhandled operations belonging to `efRem` are re-tagged or
+    scoped seamlessly in $O(1)$ via static row morphisms.
+  - Ground Note [Two-Phase Weaving and Unweaving] [ref:note-two-phase-engine].
+
+dependencies:
+  - phase4-03-vector-interpretation
+
+packages:
+  - penelope-core
+
+executor: agy
+model: gemini-3.8-flash-high
+skills:
+  - tricorder
+  - code-navigation
+  - contextful
+max_turns: 12
+run_budget: 600
+max_repair_attempts: 3
+
+steps:
+  - id: implement-partial-interpretation
+    name: Implement interpretSub and residual effect re-indexing
+    action: |
+      In `packages/penelope-core/src/Penelope/Core/Engine/Partial.hs`:
+      1. Implement `interpretSub` using `RowPartition efSub efRem efFull`.
+      2. Handle target operations by invoking provided handler vector.
+      3. Pass through residual operations by re-mapping variant tags to `efRem`.
+      4. Re-export partial interpretation engine from `packages/penelope-core/src/Penelope/Core/Engine.hs`.
+      5. Ground Note [Two-Phase Weaving and Unweaving] [ref:note-two-phase-engine].
+    duration: "45m"
+
+  - id: add-partial-interpretation-tests
+    name: Implement unit tests in packages/penelope-core/test/Main.hs
+    action: |
+      In `packages/penelope-core/test/Main.hs`:
+      1. Define a 2-effect stack (e.g. `'["state" := StateOp, "log" := LogOp]`).
+      2. Interpret `"state"` with `interpretSub`, producing a residual computation over `'["log" := LogOp]`.
+      3. Interpret the residual `"log"` effect with `interpretAll`.
+      4. Assert final output matches full layered execution.
+      5. Verify clean compilation under `-Wall -Wcompat -Wredundant-constraints`.
+    duration: "30m"
+
+  - id: verify-gate
+    name: Run verification gate
+    action: |
+      Run `cabal test penelope-core:test:tests` and execute `sh scripts/tasks/phase4-04-partial-interpretation-verify.sh`.
+    duration: "10m"
+
+success_criteria:
+  - Package `penelope-core` builds warning-free under `-Wall -Wcompat -Wredundant-constraints`.
+  - "'interpretSub' peels target effects while cleanly preserving residual effects in the AST."
+  - Partitioning uses `RowPartition` with compile-time index resolution.
+  - All test assertions in `packages/penelope-core/test/Main.hs` pass cleanly (0 failures).
+  - Note [Two-Phase Weaving and Unweaving] [ref:note-two-phase-engine] referenced in source.
+  - Zero forbidden partial functions in `packages/penelope-core/src/`.

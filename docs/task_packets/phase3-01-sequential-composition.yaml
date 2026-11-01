@@ -1,0 +1,77 @@
+---
+id: phase3-01-sequential-composition
+title: Implement Sequential Composition and Coyoneda Leaf Fusion
+description: |
+  Implement Milestone 3.1 of Phase 3 (Polycategorical Composition & The Frame Rule
+  per ~/src/penelope/PLAN.md §Phase 3 and docs/notes/IMPLEMENTATION_PLAN.md §Phase 3).
+  Establishes `Penelope.Core.Wiring` in `packages/penelope-core`, providing sequential
+  composition `(>>>)` and Coyoneda continuation leaf fusion.
+
+  Architectural Context:
+  - Sequential Composition: `seqPenelope :: Penelope eh ef a b -> Penelope eh ef b c -> Penelope eh ef a c`
+    and infix `(>>>)`.
+  - Coyoneda Continuation Leaf Fusion: When traversing `OpF`, `OpH`, or `LiftPure`, leaf
+    continuations `Record (BranchCont ...) exits` are mapped using `Polytropos.Record.rmapFused`,
+    fusing downstream continuation pipelines into a single pass and avoiding intermediate
+    `SmallArray#` allocations during chained binds
+    (Note [Unpacked Polycategorical Representation] [ref:note-unpacked-representation]).
+  - Peephole Route Fusion: When composing `Route m1 >>> Route m2`, fuses statically to
+    `Route (composeRowMorph m1 m2)` in $O(|outs|)$ time
+    (Note [Reified Row Morphisms and Gather-Scatter] [ref:note-row-morph-routing]).
+  - Ground Note [Unpacked Polycategorical Representation] [ref:note-unpacked-representation] and
+    Note [Reified Row Morphisms and Gather-Scatter] [ref:note-row-morph-routing].
+
+dependencies:
+  - phase2-01-syntax-gadt
+  - phase2-02-route-optimizer
+
+packages:
+  - penelope-core
+
+executor: agy
+model: gemini-3.8-flash-high
+skills:
+  - tricorder
+  - code-navigation
+  - contextful
+max_turns: 12
+run_budget: 600
+max_repair_attempts: 3
+
+steps:
+  - id: implement-sequential-composition
+    name: Implement seqPenelope and Coyoneda leaf continuation fusion
+    action: |
+      In `packages/penelope-core/src/Penelope/Core/Wiring.hs`:
+      1. Implement `seqPenelope :: Penelope eh ef a b -> Penelope eh ef b c -> Penelope eh ef a c`.
+      2. Implement operator `(>>>) = seqPenelope`.
+      3. Implement recursive continuation leaf substitution for `Route`, `LiftPure`, `OpF`, `OpH`, and `ScopeRow`.
+      4. Leverage `Polytropos.Record.rmapFused` for zero-allocation continuation record mapping.
+      5. Re-export wiring primitives from `packages/penelope-core/src/Penelope/Core.hs`.
+      6. Ground Note [Unpacked Polycategorical Representation] [ref:note-unpacked-representation] and
+         Note [Reified Row Morphisms and Gather-Scatter] [ref:note-row-morph-routing].
+    duration: "45m"
+
+  - id: add-sequential-composition-tests
+    name: Implement unit tests in packages/penelope-core/test/Main.hs
+    action: |
+      In `packages/penelope-core/test/Main.hs`:
+      1. Test sequential composition of multiple pure transformations (`LiftPure`).
+      2. Test composition of `Route` stages and verify peephole fusion into a single `Route`.
+      3. Test composition across multi-branch continuations.
+      4. Verify clean compilation under `-Wall -Wcompat -Wredundant-constraints`.
+    duration: "30m"
+
+  - id: verify-gate
+    name: Run verification gate
+    action: |
+      Run `cabal test penelope-core:test:tests` and execute `sh scripts/tasks/phase3-01-sequential-composition-verify.sh`.
+    duration: "10m"
+
+success_criteria:
+  - Package `penelope-core` builds warning-free under `-Wall -Wcompat -Wredundant-constraints`.
+  - Sequential composition `(>>>)` correctly preserves semantics across all syntax constructs.
+  - Route composition `Route m1 >>> Route m2` fuses into `Route (composeRowMorph m1 m2)`.
+  - All test assertions in `packages/penelope-core/test/Main.hs` pass cleanly (0 failures).
+  - Note [Unpacked Polycategorical Representation] [ref:note-unpacked-representation] and Note [Reified Row Morphisms and Gather-Scatter] [ref:note-row-morph-routing] referenced in source.
+  - Zero forbidden partial functions in `packages/penelope-core/src/`.

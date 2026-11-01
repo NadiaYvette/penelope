@@ -1,0 +1,81 @@
+---
+id: phase4-03-vector-interpretation
+title: Implement Phase 2 Bulk Vector-Dispatched Interpretation (interpretAll)
+description: |
+  Implement Milestone 4.3 of Phase 4 (Two-Phase Weaving & Interpretation Engine
+  per ~/src/penelope/PLAN.md §Phase 4 and docs/notes/IMPLEMENTATION_PLAN.md §Phase 4).
+  Establishes `Penelope.Core.Engine.Interpret` in `packages/penelope-core`, providing
+  Phase 2 bulk vector-dispatched algebraic interpretation over first-order operations.
+
+  Architectural Context:
+  - Branchless Vector Dispatch Invariant: At Phase 2, all higher-order operations have been
+    eliminated by `elaborateAll`. First-order operations (`OpF tag# inMap opAny conts`) are
+    dispatched via branchless `indexSmallArray#` into the handler record in $O(1)$ time,
+    eliminating linear search cascades (`eqWord#`)
+    (Note [Two-Phase Weaving and Unweaving] [ref:note-two-phase-engine]).
+  - Target Target Category: Supports interpretation into any target `Category m`, mapping
+    pure wire permutations via `(forall i o. RowMorph o i -> m i o)`.
+  - Handler Type:
+    `newtype Handler ef m (e :: PolyEffect) = Handler { runHandler :: ... }`
+    `interpretAll :: Category m => (forall i o. RowMorph o i -> m i o) -> Record (Handler '[] m) ef -> Penelope '[] ef ins outs -> m ins outs`.
+  - Contravariant Handler Reduct: Dispatches inner computations across `ScopeRow` nodes by
+    contravariantly adapting the handler record (`gatherRecord σ H`) in $O(|ef_{sub}|)$ time
+    (Note [Institutional Satisfaction and Zero-Traversal Weakening] [ref:note-satisfaction-weakening]).
+  - Ground Note [Two-Phase Weaving and Unweaving] [ref:note-two-phase-engine] and
+    Note [Institutional Satisfaction and Zero-Traversal Weakening] [ref:note-satisfaction-weakening].
+
+dependencies:
+  - phase2-01-syntax-gadt
+  - phase4-02-higher-order-elaboration
+
+packages:
+  - penelope-core
+
+executor: agy
+model: gemini-3.8-flash-high
+skills:
+  - tricorder
+  - code-navigation
+  - contextful
+max_turns: 12
+run_budget: 600
+max_repair_attempts: 3
+
+steps:
+  - id: implement-vector-interpretation
+    name: Implement Handler and interpretAll
+    action: |
+      In `packages/penelope-core/src/Penelope/Core/Engine/Interpret.hs`:
+      1. Define `newtype Handler ef m (e :: PolyEffect)`.
+      2. Implement `interpretAll` interpreting `Penelope '[] ef ins outs` into `m ins outs`.
+      3. Implement $O(1)$ branchless dispatch for `OpF` using `indexSmallArray#`.
+      4. Implement handler reduction for `ScopeRow` nodes using `gatherRecord`.
+      5. Re-export interpretation engine from `packages/penelope-core/src/Penelope/Core/Engine.hs`.
+      6. Ground Note [Two-Phase Weaving and Unweaving] [ref:note-two-phase-engine] and
+         Note [Institutional Satisfaction and Zero-Traversal Weakening] [ref:note-satisfaction-weakening].
+    duration: "45m"
+
+  - id: add-interpretation-unit-tests
+    name: Implement unit tests in packages/penelope-core/test/Main.hs
+    action: |
+      In `packages/penelope-core/test/Main.hs`:
+      1. Define test first-order effects (e.g. `Reader`, `State`).
+      2. Construct sample programs using `sendPolyF` and sequential wiring.
+      3. Interpret into Kleisli arrows or pure morphism categories.
+      4. Assert correct evaluation and state preservation.
+      5. Verify clean compilation under `-Wall -Wcompat -Wredundant-constraints`.
+    duration: "30m"
+
+  - id: verify-gate
+    name: Run verification gate
+    action: |
+      Run `cabal test penelope-core:test:tests` and execute `sh scripts/tasks/phase4-03-vector-interpretation-verify.sh`.
+    duration: "10m"
+
+success_criteria:
+  - Package `penelope-core` builds warning-free under `-Wall -Wcompat -Wredundant-constraints`.
+  - "'interpretAll' executes first-order operations via O(1) branchless indexSmallArray#."
+  - Target category evaluation preserves input/output frame values accurately.
+  - All test assertions in `packages/penelope-core/test/Main.hs` pass cleanly (0 failures).
+  - Note [Two-Phase Weaving and Unweaving] [ref:note-two-phase-engine] and Note [Institutional Satisfaction and Zero-Traversal Weakening] [ref:note-satisfaction-weakening] referenced in source.
+  - Zero forbidden partial functions in `packages/penelope-core/src/`.

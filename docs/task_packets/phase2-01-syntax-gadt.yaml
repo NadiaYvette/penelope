@@ -1,0 +1,91 @@
+---
+id: phase2-01-syntax-gadt
+title: Implement Type-Level Signatures and Core Syntax GADT
+description: |
+  Implement Milestone 2.1 of Phase 2 (Core (m,n,k,r)-ary Syntax & Unpacked Representation
+  per ~/src/penelope/PLAN.md §Phase 2 and docs/notes/IMPLEMENTATION_PLAN.md §Phase 2).
+  Establishes `Penelope.Core.Syntax` in `packages/penelope-core`, providing the foundational
+  data structures, poly-kinded signatures, and core syntax GADT for Penelope's
+  (m,n,k,r)-ary polycategorical effect engine.
+
+  Architectural Context:
+  - Unpacked Nursery Invariant: Unrolls `Word#` variant tag and `Any` payload directly into
+    GADT constructors (`OpF`, `OpH`) to avoid allocating a 1-element `SmallArray#` per monadic
+    bind on the hot path (Note [Unpacked Polycategorical Representation] [ref:note-unpacked-representation]).
+  - Poly-Kinded Effect Signatures:
+    `type PolyEffect = Row Type -> Row (Row Type) -> Type`
+    `type PolyHEffect = (PortSig -> Type) -> Row PortSig -> Row Type -> Row (Row Type) -> Type`
+  - Polycategorical Port Signature:
+    `data PortSig = PortSig (Row Type) (Row Type)` with type families `RegionIns` and `RegionOuts`.
+  - Multi-Exit Branch Continuations:
+    `newtype BranchCont m (outs :: Row Type) = BranchCont { runBranchCont :: Record Identity outs -> m }`
+  - Scoped Sub-Regions:
+    `newtype Region eh ef (sig :: PortSig) = Region { runRegion :: Penelope eh ef (RegionIns sig) (RegionOuts sig) }`
+  - Core Syntax GADT constructors:
+    `Route !(RowMorph outs ins)`
+    `LiftPure !(RowMorph opIns ins) !(Record Identity opIns -> Record Identity opOuts) !(BranchCont (Penelope eh ef ins outs) opOuts)`
+    `OpF Word# !(RowMorph opIns ins) Any !(Record (BranchCont (Penelope eh ef ins outs)) exits)`
+    `OpH Word# !(RowMorph opIns ins) !(Record (Region eh ef) regions) Any !(Record (BranchCont (Penelope eh ef ins outs)) exits)`
+    `ScopeRow !(RowMorph ehSub ehFull) !(RowMorph efSub efFull) !(Penelope ehSub efSub ins outs)`
+  - Ground Note [Core Architecture] [ref:note-core-architecture] and
+    Note [Unpacked Polycategorical Representation] [ref:note-unpacked-representation].
+
+dependencies: []
+
+packages:
+  - penelope-core
+
+executor: agy
+model: gemini-3.8-flash-high
+skills:
+  - tricorder
+  - code-navigation
+  - contextful
+max_turns: 12
+run_budget: 600
+max_repair_attempts: 3
+
+steps:
+  - id: update-cabal-dependencies
+    name: Add polytropos-core, polytropos-plugin, and primitive dependencies to penelope-core
+    action: |
+      1. In `packages/penelope-core/penelope-core.cabal`:
+         - Add `polytropos-core >= 0.1`, `polytropos-plugin >= 0.1`, and `primitive >= 0.9` to `build-depends`.
+         - Add GHC plugin option `-fplugin=Polytropos.Plugin` or appropriate default extensions.
+         - Expose `Penelope.Core.Syntax` in `exposed-modules`.
+      2. Verify `cabal build penelope-core` resolves dependencies cleanly.
+    duration: "15m"
+
+  - id: implement-syntax-gadt
+    name: Define PortSig, BranchCont, Region, and Penelope GADT
+    action: |
+      In `packages/penelope-core/src/Penelope/Core/Syntax.hs`:
+      1. Define `PortSig`, `RegionIns`, `RegionOuts`, `PolyEffect`, `PolyHEffect`.
+      2. Define `BranchCont` and `Region` newtypes.
+      3. Implement `data Penelope (eh :: Row PolyHEffect) (ef :: Row PolyEffect) (ins :: Row Type) (outs :: Row Type)` GADT.
+      4. Re-export syntax primitives from `packages/penelope-core/src/Penelope/Core.hs`.
+      5. Ground Note [Core Architecture] [ref:note-core-architecture] and
+         Note [Unpacked Polycategorical Representation] [ref:note-unpacked-representation].
+    duration: "45m"
+
+  - id: add-syntax-unit-tests
+    name: Implement unit tests in packages/penelope-core/test/Main.hs
+    action: |
+      In `packages/penelope-core/test/Main.hs`:
+      1. Construct sample `Route`, `LiftPure`, `OpF`, `OpH`, and `ScopeRow` terms.
+      2. Verify term construction and record continuation projections.
+      3. Ensure zero compiler warnings and clean Hspec test execution.
+    duration: "30m"
+
+  - id: verify-gate
+    name: Run verification gate
+    action: |
+      Run `cabal test penelope-core:test:tests` and execute `sh scripts/tasks/phase2-01-syntax-gadt-verify.sh`.
+    duration: "10m"
+
+success_criteria:
+  - Package `penelope-core` builds warning-free under `-Wall -Wcompat -Wredundant-constraints`.
+  - Unpacked `Penelope` GADT constructors correctly support unboxed `Word#` tags and flat `Record` continuations.
+  - All test assertions in `packages/penelope-core/test/Main.hs` pass cleanly (0 failures).
+  - Note [Core Architecture] [ref:note-core-architecture] and Note [Unpacked Polycategorical Representation] [ref:note-unpacked-representation] referenced in source.
+  - Zero forbidden partial functions in `packages/penelope-core/src/`.

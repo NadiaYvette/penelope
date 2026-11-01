@@ -1,0 +1,70 @@
+---
+id: phase2-03-smart-constructors
+title: Implement Zero-Overhead Smart Constructors (sendPolyF and sendPolyH)
+description: |
+  Implement Milestone 2.3 of Phase 2 (Core (m,n,k,r)-ary Syntax & Unpacked Representation
+  per ~/src/penelope/PLAN.md §Phase 2 and docs/notes/IMPLEMENTATION_PLAN.md §Phase 2).
+  Establishes `Penelope.Core.Send` in `packages/penelope-core`, providing zero-overhead smart
+  constructors injecting first-order and higher-order effect operations.
+
+  Architectural Context:
+  - Compile-Time Tag Lookup: Uses `ConstructorIndex l ef` (or `ConstructorIndex l eh`) solved
+    by `Polytropos.Plugin` to resolve unboxed `Word#` variant tags with zero runtime dictionary passing.
+  - First-Order Injection (`sendPolyF`):
+    Injects operation payload with `unsafeCoerce#` and static input gather wiring via `KnownRowMorph`.
+    Connects to a single return branch continuation or multi-exit record.
+  - Higher-Order Scoped Injection (`sendPolyH`):
+    Packages scoped sub-regions into `Record (Region eh ef) regions` with static input gather wiring.
+  - Ground Note [Unpacked Polycategorical Representation] [ref:note-unpacked-representation].
+
+dependencies:
+  - phase2-01-syntax-gadt
+  - phase2-02-route-optimizer
+
+packages:
+  - penelope-core
+
+executor: agy
+model: gemini-3.8-flash-high
+skills:
+  - tricorder
+  - code-navigation
+  - contextful
+max_turns: 12
+run_budget: 600
+max_repair_attempts: 3
+
+steps:
+  - id: implement-send-constructors
+    name: Implement sendPolyF and sendPolyH smart constructors
+    action: |
+      In `packages/penelope-core/src/Penelope/Core/Send.hs`:
+      1. Implement `sendPolyF` injecting a first-order effect operation with static `RowMorph` wiring.
+      2. Implement `sendPolyH` injecting a higher-order scoped operation with sub-regions record.
+      3. Provide unary-convenience helpers (e.g. single-output return continuations).
+      4. Re-export send primitives from `packages/penelope-core/src/Penelope/Core.hs`.
+      5. Ground Note [Unpacked Polycategorical Representation] [ref:note-unpacked-representation].
+    duration: "45m"
+
+  - id: add-send-unit-tests
+    name: Implement unit tests in packages/penelope-core/test/Main.hs
+    action: |
+      In `packages/penelope-core/test/Main.hs`:
+      1. Define test effect rows `TestEF` and `TestEH`.
+      2. Verify `sendPolyF` and `sendPolyH` construct well-typed terms.
+      3. Verify variant tags match expected zero-based `Word#` indices.
+      4. Verify clean compilation under `-Wall -Wcompat -Wredundant-constraints`.
+    duration: "30m"
+
+  - id: verify-gate
+    name: Run verification gate
+    action: |
+      Run `cabal test penelope-core:test:tests` and execute `sh scripts/tasks/phase2-03-smart-constructors-verify.sh`.
+    duration: "10m"
+
+success_criteria:
+  - Package `penelope-core` builds warning-free under `-Wall -Wcompat -Wredundant-constraints`.
+  - "'sendPolyF' and 'sendPolyH' compile to direct OpF / OpH constructor applications with unboxed Word# tags."
+  - All test assertions in `packages/penelope-core/test/Main.hs` pass cleanly (0 failures).
+  - Note [Unpacked Polycategorical Representation] [ref:note-unpacked-representation] referenced in source.
+  - Zero forbidden partial functions in `packages/penelope-core/src/`.

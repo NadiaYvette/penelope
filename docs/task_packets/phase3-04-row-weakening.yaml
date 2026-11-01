@@ -1,0 +1,73 @@
+---
+id: phase3-04-row-weakening
+title: Implement Zero-Traversal Row Weakening via ScopeRow
+description: |
+  Implement Milestone 3.4 of Phase 3 (Polycategorical Composition & The Frame Rule
+  per ~/src/penelope/PLAN.md §Phase 3 and docs/notes/IMPLEMENTATION_PLAN.md §Phase 3).
+  Extends `Penelope.Core.Wiring` in `packages/penelope-core` with zero-traversal row
+  weakening primitives via `ScopeRow`.
+
+  Architectural Context:
+  - Institutional Satisfaction Invariant: Subprograms are embedded into wider effect rows
+    without traversing the syntax tree to re-tag `Word#` indices. Using Goguen-Burstall
+    institutions and the satisfaction condition
+    (eval_J(H, \sigma_*(P)) = eval_I(\sigma^*(H), P)), embedding is realized as an
+    $O(|eh_1| + |ef_1|)$ contravariant gathering of the handler record (`gatherRecord σ H`)
+    at `ScopeRow` boundary nodes
+    (Note [Institutional Satisfaction and Zero-Traversal Weakening] [ref:note-satisfaction-weakening]).
+  - Zero-Traversal Embedding: Wraps an inner program in `ScopeRow` in $O(1)$ time:
+    `weakenRow :: (KnownRowMorph ehSub ehFull, KnownRowMorph efSub efFull) => Penelope ehSub efSub ins outs -> Penelope ehFull efFull ins outs`.
+    `weakenEF :: KnownRowMorph efSub efFull => Penelope eh efSub ins outs -> Penelope eh efFull ins outs`.
+    `weakenEH :: KnownRowMorph ehSub ehFull => Penelope ehSub ef ins outs -> Penelope ehFull ef ins outs`.
+  - Ground Note [Institutional Satisfaction and Zero-Traversal Weakening] [ref:note-satisfaction-weakening].
+
+dependencies:
+  - phase3-01-sequential-composition
+
+packages:
+  - penelope-core
+
+executor: agy
+model: gemini-3.8-flash-high
+skills:
+  - tricorder
+  - code-navigation
+  - contextful
+max_turns: 12
+run_budget: 600
+max_repair_attempts: 3
+
+steps:
+  - id: implement-row-weakening
+    name: Implement weakenRow, weakenEF, and weakenEH primitives
+    action: |
+      In `packages/penelope-core/src/Penelope/Core/Wiring.hs`:
+      1. Implement `weakenRow` using `KnownRowMorph` instances.
+      2. Implement `weakenRowExplicit` taking explicit `RowMorph` arguments.
+      3. Implement convenience combinators `weakenEF` and `weakenEH`.
+      4. Re-export row weakening primitives from `packages/penelope-core/src/Penelope/Core.hs`.
+      5. Ground Note [Institutional Satisfaction and Zero-Traversal Weakening] [ref:note-satisfaction-weakening].
+    duration: "45m"
+
+  - id: add-row-weakening-tests
+    name: Implement unit tests in packages/penelope-core/test/Main.hs
+    action: |
+      In `packages/penelope-core/test/Main.hs`:
+      1. Define inner effect rows and extended outer effect rows.
+      2. Verify `weakenRow` embeds computations with $O(1)$ node construction.
+      3. Verify nesting of multiple `ScopeRow` layers.
+      4. Verify clean compilation under `-Wall -Wcompat -Wredundant-constraints`.
+    duration: "30m"
+
+  - id: verify-gate
+    name: Run verification gate
+    action: |
+      Run `cabal test penelope-core:test:tests` and execute `sh scripts/tasks/phase3-04-row-weakening-verify.sh`.
+    duration: "10m"
+
+success_criteria:
+  - Package `penelope-core` builds warning-free under `-Wall -Wcompat -Wredundant-constraints`.
+  - "'weakenRow' wraps AST computations in ScopeRow in O(1) time with zero syntax traversal."
+  - All test assertions in `packages/penelope-core/test/Main.hs` pass cleanly (0 failures).
+  - Note [Institutional Satisfaction and Zero-Traversal Weakening] [ref:note-satisfaction-weakening] referenced in source.
+  - Zero forbidden partial functions in `packages/penelope-core/src/`.

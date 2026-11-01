@@ -1,0 +1,95 @@
+---
+id: phase5-03-effect-battery
+title: Implement Native Multi-Region and Multi-Exit Effect Battery
+description: |
+  Implement Milestone 5.3 of Phase 5 (Surface Ergonomics & Compatibility Facades
+  per ~/src/penelope/PLAN.md §Phase 5 and docs/notes/IMPLEMENTATION_PLAN.md §Phase 5).
+  Establishes `Penelope.Effects.Control`, `Penelope.Effects.Coroutine`, and
+  `Penelope.Effects.UnliftIO` in `packages/penelope-effects`, providing standard
+  native (m,n,k,r)-ary effect modules.
+
+  Architectural Context:
+  - Multi-Region Control (`Penelope.Effects.Control`): Implements `While` featuring two scoped
+    sub-regions (`"cond"` and `"body"`), multi-exit `Switch` with $k$ exits, and transactional
+    `Saga` (`"try"`, `"compensate"`, `"catch"`).
+  - Delimited Continuations (`Penelope.Effects.Coroutine`): Implements `Yield`, `Await`, and
+    `NonDet` with frame cloning and suspension, demonstrating multi-shot resumption without
+    heap leakage.
+  - Scoped Resource Safety (`Penelope.Effects.UnliftIO`): Implements `Bracket`, `Mask`, and
+    `Provider`, guaranteeing that unrolled higher-order scopes never leak resource handles
+    across dynamic evaluation contexts
+    (Note [Core Architecture] [ref:note-core-architecture]).
+  - Ground Note [Core Architecture] [ref:note-core-architecture] and
+    Note [Zero-Cost Surface Specializations] [ref:note-surface-facades].
+
+dependencies:
+  - phase5-01-heftia-unary-facade
+  - phase5-02-kernmantle-binary-facade
+
+packages:
+  - penelope-effects
+
+executor: agy
+model: gemini-3.8-flash-high
+skills:
+  - tricorder
+  - code-navigation
+  - contextful
+max_turns: 12
+run_budget: 600
+max_repair_attempts: 3
+
+steps:
+  - id: implement-control-effects
+    name: Implement Penelope.Effects.Control (While, Switch, Saga)
+    action: |
+      In `packages/penelope-effects/src/Penelope/Effects/Control.hs`:
+      1. Define `While` higher-order effect with `"cond"` and `"body"` regions.
+      2. Define `Switch` operation with dynamic disjunctive $k$-way exits.
+      3. Define `Saga` transactional workflow with compensation handlers.
+      4. Ground Note [Core Architecture] [ref:note-core-architecture].
+    duration: "45m"
+
+  - id: implement-coroutine-effects
+    name: Implement Penelope.Effects.Coroutine (Yield, Await, NonDet)
+    action: |
+      In `packages/penelope-effects/src/Penelope/Effects/Coroutine.hs`:
+      1. Define `Coroutine` effect with `Yield` and `Await`.
+      2. Define `NonDet` effect with multi-path branch resumption.
+      3. Implement frame capture and suspension routines.
+      4. Ground Note [Core Architecture] [ref:note-core-architecture].
+    duration: "45m"
+
+  - id: implement-unliftio-effects
+    name: Implement Penelope.Effects.UnliftIO (Bracket, Mask, Provider)
+    action: |
+      In `packages/penelope-effects/src/Penelope/Effects/UnliftIO.hs`:
+      1. Define `Bracket` and `Mask` higher-order scoped effects.
+      2. Define `Provider` dependency-injection effect.
+      3. Implement elaborators lowering scoped resource management to first-order primitives.
+      4. Re-export effect modules in `packages/penelope-effects/src/Penelope/Effects.hs`.
+      5. Ground Note [Zero-Cost Surface Specializations] [ref:note-surface-facades].
+    duration: "45m"
+
+  - id: add-battery-tests
+    name: Implement unit tests in packages/penelope-effects/test/Main.hs
+    action: |
+      In `packages/penelope-effects/test/Main.hs`:
+      1. Test `While` loop execution and state termination.
+      2. Test `Coroutine` generator yielding values to consumer.
+      3. Test `Bracket` resource acquisition and cleanup on success and error exits.
+      4. Verify clean compilation under `-Wall -Wcompat -Wredundant-constraints`.
+    duration: "30m"
+
+  - id: verify-gate
+    name: Run verification gate
+    action: |
+      Run `cabal test penelope-effects:test:tests` and execute `sh scripts/tasks/phase5-03-effect-battery-verify.sh`.
+    duration: "10m"
+
+success_criteria:
+  - Package `penelope-effects` builds warning-free under `-Wall -Wcompat -Wredundant-constraints`.
+  - Multi-region (`While`), multi-exit (`Switch`), and scoped (`Bracket`) effect modules execute accurately.
+  - All test assertions in `packages/penelope-effects/test/Main.hs` pass cleanly (0 failures).
+  - Note [Core Architecture] [ref:note-core-architecture] and Note [Zero-Cost Surface Specializations] [ref:note-surface-facades] referenced in source.
+  - Zero forbidden partial functions in `packages/penelope-effects/src/`.

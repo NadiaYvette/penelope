@@ -1,0 +1,83 @@
+---
+id: phase5-02-kernmantle-binary-facade
+title: Implement the Kernmantle Binary Arrow Facade (Rope)
+description: |
+  Implement Milestone 5.2 of Phase 5 (Surface Ergonomics & Compatibility Facades
+  per ~/src/penelope/PLAN.md §Phase 5 and docs/notes/IMPLEMENTATION_PLAN.md §Phase 5).
+  Establishes `Penelope.Effects.Binary` in `packages/penelope-effects`, providing the
+  `Rope eh ef a b` binary arrow facade and router derivation.
+
+  Architectural Context:
+  - Zero-Cost Binary Specialization: Binary arrow pipelines are projected over the core engine
+    via a newtype wrapper with zero runtime penalty:
+    `newtype Rope eh ef a b = Rope { unRope :: Penelope eh ef '["in" := a] '["out" := b] }`
+    (Note [Zero-Cost Surface Specializations] [ref:note-surface-facades]).
+  - Arrow & Profunctor Hierarchy: Implements `Category`, `Arrow`, `ArrowChoice`, `Profunctor`,
+    `Strong`, and `Choice` for `Rope eh ef`.
+  - Static Jump-Table Router: `deriveRouter` compiles a `Record` of `Rope` handlers into an $O(1)$
+    jump table over `Polytropos.Variant`, eliminating linear branching cascades and nested
+    coproduct shuffles (`Either (Either a b) c`).
+  - Ground Note [Zero-Cost Surface Specializations] [ref:note-surface-facades].
+
+dependencies:
+  - phase3-01-sequential-composition
+  - phase3-02-frame-rule-wiring
+  - phase4-03-vector-interpretation
+
+packages:
+  - penelope-effects
+
+executor: agy
+model: gemini-3.8-flash-high
+skills:
+  - tricorder
+  - code-navigation
+  - contextful
+max_turns: 12
+run_budget: 600
+max_repair_attempts: 3
+
+steps:
+  - id: update-cabal-dependencies
+    name: Add profunctors dependency to penelope-effects
+    action: |
+      In `packages/penelope-effects/penelope-effects.cabal`:
+      1. Add `profunctors >= 5.6` to `build-depends`.
+      2. Expose `Penelope.Effects.Binary` in `exposed-modules`.
+      3. Verify clean compilation with `cabal build penelope-effects`.
+    duration: "15m"
+
+  - id: implement-binary-facade
+    name: Implement Rope newtype, Arrow/Profunctor instances, and deriveRouter
+    action: |
+      In `packages/penelope-effects/src/Penelope/Effects/Binary.hs`:
+      1. Define `newtype Rope eh ef a b = Rope { unRope :: Penelope eh ef '["in" := a] '["out" := b] }`.
+      2. Implement `Category`, `Arrow`, `ArrowChoice`, `Profunctor`, `Strong`, and `Choice`.
+      3. Implement `deriveRouter` compiling record of branch handlers to $O(1)$ variant jump table.
+      4. Re-export binary facade from `packages/penelope-effects/src/Penelope/Effects.hs`.
+      5. Ground Note [Zero-Cost Surface Specializations] [ref:note-surface-facades].
+    duration: "45m"
+
+  - id: add-binary-facade-tests
+    name: Implement unit tests in packages/penelope-effects/test/Main.hs
+    action: |
+      In `packages/penelope-effects/test/Main.hs`:
+      1. Verify `Rope` satisfies Arrow and Category laws.
+      2. Build multi-stage arrow pipelines using `(>>>)`, `first`, `second`, and `(***)`.
+      3. Test `deriveRouter` dispatch over multi-variant inputs.
+      4. Verify clean compilation under `-Wall -Wcompat -Wredundant-constraints`.
+    duration: "30m"
+
+  - id: verify-gate
+    name: Run verification gate
+    action: |
+      Run `cabal test penelope-effects:test:tests` and execute `sh scripts/tasks/phase5-02-kernmantle-binary-facade-verify.sh`.
+    duration: "10m"
+
+success_criteria:
+  - Package `penelope-effects` builds warning-free under `-Wall -Wcompat -Wredundant-constraints`.
+  - "'Rope' provides a Category, Arrow, and Profunctor surface over the polycategorical core."
+  - "'deriveRouter' executes branch routing in O(1) without nested coproduct unpacking."
+  - All test assertions in `packages/penelope-effects/test/Main.hs` pass cleanly (0 failures).
+  - Note [Zero-Cost Surface Specializations] [ref:note-surface-facades] referenced in source.
+  - Zero forbidden partial functions in `packages/penelope-effects/src/`.

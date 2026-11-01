@@ -1,0 +1,72 @@
+---
+id: phase2-02-route-optimizer
+title: Implement Pure Route Peephole Optimizer and Smart Constructor
+description: |
+  Implement Milestone 2.2 of Phase 2 (Core (m,n,k,r)-ary Syntax & Unpacked Representation
+  per ~/src/penelope/PLAN.md §Phase 2 and docs/notes/IMPLEMENTATION_PLAN.md §Phase 2).
+  Establishes `Penelope.Core.Route` in `packages/penelope-core`, providing zero-cost
+  port wire routing, identity elision, and pure route peephole fusion.
+
+  Architectural Context:
+  - Reified Row Morphisms: Wire permutations are reified as compile-time synthesized
+    `RowMorph` index arrays (`PrimArray Int`) eliminating runtime tuple reshuffling
+    (Note [Reified Row Morphisms and Gather-Scatter] [ref:note-row-morph-routing]).
+  - Smart Constructor: `route :: KnownRowMorph outs ins => Penelope eh ef ins outs` and
+    `routeExplicit :: RowMorph outs ins -> Penelope eh ef ins outs`.
+  - Identity Elision: Detects identity permutations via `isIdentityRowMorph`, eliding redundant
+    routing overhead on identical input-output frames.
+  - Pure Route Fusion: Provides `fuseRoute :: RowMorph mid ins -> RowMorph outs mid -> RowMorph outs ins`
+    using `composeRowMorph` in $O(|outs|)$ time with zero intermediate allocations.
+  - Ground Note [Reified Row Morphisms and Gather-Scatter] [ref:note-row-morph-routing].
+
+dependencies:
+  - phase2-01-syntax-gadt
+
+packages:
+  - penelope-core
+
+executor: agy
+model: gemini-3.8-flash-high
+skills:
+  - tricorder
+  - code-navigation
+  - contextful
+max_turns: 12
+run_budget: 600
+max_repair_attempts: 3
+
+steps:
+  - id: implement-route-optimizer
+    name: Implement route smart constructor and fusion functions
+    action: |
+      In `packages/penelope-core/src/Penelope/Core/Route.hs`:
+      1. Define `route :: KnownRowMorph outs ins => Penelope eh ef ins outs`.
+      2. Define `routeExplicit :: RowMorph outs ins -> Penelope eh ef ins outs`.
+      3. Implement `fuseRoute :: RowMorph b a -> RowMorph c b -> RowMorph c a`.
+      4. Implement `isIdentityRoute :: Penelope eh ef ins outs -> Bool`.
+      5. Re-export route primitives from `packages/penelope-core/src/Penelope/Core.hs`.
+      6. Ground Note [Reified Row Morphisms and Gather-Scatter] [ref:note-row-morph-routing].
+    duration: "30m"
+
+  - id: add-route-unit-tests
+    name: Implement unit tests in packages/penelope-core/test/Main.hs
+    action: |
+      In `packages/penelope-core/test/Main.hs`:
+      1. Test `route` synthesis across permuted, swapped, and subset register frames.
+      2. Test `fuseRoute` associativity and composition with identity morphisms.
+      3. Verify clean compilation under `-Wall -Wcompat -Wredundant-constraints`.
+    duration: "30m"
+
+  - id: verify-gate
+    name: Run verification gate
+    action: |
+      Run `cabal test penelope-core:test:tests` and execute `sh scripts/tasks/phase2-02-route-optimizer-verify.sh`.
+    duration: "10m"
+
+success_criteria:
+  - Package `penelope-core` builds warning-free under `-Wall -Wcompat -Wredundant-constraints`.
+  - "'route' compiles cleanly using KnownRowMorph solver from Polytropos.Plugin."
+  - Route composition correctly delegates to `composeRowMorph` in $O(|outs|)$.
+  - All test assertions in `packages/penelope-core/test/Main.hs` pass cleanly (0 failures).
+  - Note [Reified Row Morphisms and Gather-Scatter] [ref:note-row-morph-routing] referenced in source.
+  - Zero forbidden partial functions in `packages/penelope-core/src/`.

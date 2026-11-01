@@ -1,0 +1,81 @@
+---
+id: phase4-02-higher-order-elaboration
+title: Implement Phase 1 Single-Pass Higher-Order Elaboration (elaborateAll)
+description: |
+  Implement Milestone 4.2 of Phase 4 (Two-Phase Weaving & Interpretation Engine
+  per ~/src/penelope/PLAN.md §Phase 4 and docs/notes/IMPLEMENTATION_PLAN.md §Phase 4).
+  Establishes `Penelope.Core.Engine.Elaborate` in `packages/penelope-core`, providing
+  Phase 1 macro-lowering from higher-order scoped effects to pure first-order operations.
+
+  Architectural Context:
+  - Two-Phase Soundness Separation: Execution is strictly partitioned into Phase 1 elaboration
+    and Phase 2 interpretation. This separation mathematically prevents scoped dynamic handler
+    state from leaking or corrupting across multi-shot coroutines or backtracking continuations
+    (Note [Two-Phase Weaving and Unweaving] [ref:note-two-phase-engine]).
+  - Single-Pass Bottom-Up Lowering:
+    `newtype Elaborator eh' ef h = Elaborator { runElaborator :: ... }`
+    `elaborateAll :: Record (Elaborator '[] ef) eh -> Penelope eh ef ins outs -> Penelope '[] ef ins outs`.
+  - $O(1)$ Elaborator Dispatch: Unrolls scoped regions at each `OpH` node by indexing into the
+    elaborator vector in $O(1)$ via branchless `indexSmallArray#`.
+  - Contravariant Handler Reduct: At `ScopeRow` boundary nodes, adapts outer elaborators to inner
+    scopes via contravariant gathering (`gatherRecord σ H`) in $O(|eh_{sub}|)$ time
+    (Note [Institutional Satisfaction and Zero-Traversal Weakening] [ref:note-satisfaction-weakening]).
+  - Ground Note [Two-Phase Weaving and Unweaving] [ref:note-two-phase-engine] and
+    Note [Institutional Satisfaction and Zero-Traversal Weakening] [ref:note-satisfaction-weakening].
+
+dependencies:
+  - phase2-01-syntax-gadt
+  - phase3-01-sequential-composition
+  - phase3-04-row-weakening
+
+packages:
+  - penelope-core
+
+executor: agy
+model: gemini-3.8-flash-high
+skills:
+  - tricorder
+  - code-navigation
+  - contextful
+max_turns: 12
+run_budget: 600
+max_repair_attempts: 3
+
+steps:
+  - id: implement-higher-order-elaboration
+    name: Implement Elaborator and elaborateAll
+    action: |
+      In `packages/penelope-core/src/Penelope/Core/Engine/Elaborate.hs`:
+      1. Define `newtype Elaborator eh' ef (h :: PolyHEffect)`.
+      2. Implement `elaborateAll :: Record (Elaborator '[] ef) eh -> Penelope eh ef ins outs -> Penelope '[] ef ins outs`.
+      3. Implement $O(1)$ dispatch on `OpH` constructor tags using `indexSmallArray#`.
+      4. Implement contravariant gathering of elaborators across `ScopeRow` nodes using `gatherRecord`.
+      5. Re-export elaboration engine from `packages/penelope-core/src/Penelope/Core/Engine.hs`.
+      6. Ground Note [Two-Phase Weaving and Unweaving] [ref:note-two-phase-engine] and
+         Note [Institutional Satisfaction and Zero-Traversal Weakening] [ref:note-satisfaction-weakening].
+    duration: "45m"
+
+  - id: add-elaboration-unit-tests
+    name: Implement unit tests in packages/penelope-core/test/Main.hs
+    action: |
+      In `packages/penelope-core/test/Main.hs`:
+      1. Define a sample higher-order effect (e.g. `Catch` or `Bracket`).
+      2. Provide an elaborator lowering it to first-order operations.
+      3. Assert `elaborateAll` returns a `Penelope '[] ef ins outs` computation with zero `OpH` nodes.
+      4. Test elaboration through `ScopeRow` boundary nodes.
+      5. Verify clean compilation under `-Wall -Wcompat -Wredundant-constraints`.
+    duration: "30m"
+
+  - id: verify-gate
+    name: Run verification gate
+    action: |
+      Run `cabal test penelope-core:test:tests` and execute `sh scripts/tasks/phase4-02-higher-order-elaboration-verify.sh`.
+    duration: "10m"
+
+success_criteria:
+  - Package `penelope-core` builds warning-free under `-Wall -Wcompat -Wredundant-constraints`.
+  - "'elaborateAll' systematically eliminates all OpH nodes into Penelope '[] ef ins outs."
+  - Elaborator dispatch executes in $O(1)$ time via `indexSmallArray#`.
+  - All test assertions in `packages/penelope-core/test/Main.hs` pass cleanly (0 failures).
+  - Note [Two-Phase Weaving and Unweaving] [ref:note-two-phase-engine] and Note [Institutional Satisfaction and Zero-Traversal Weakening] [ref:note-satisfaction-weakening] referenced in source.
+  - Zero forbidden partial functions in `packages/penelope-core/src/`.
