@@ -183,7 +183,8 @@ register frame by composing 'fpGatherIn' at the root and 'executeFrameScatter' a
 See Note [Frame-Rule Automatic Wire Synthesis] [ref:note-frame-rule-wiring].
 -}
 liftFrame ::
-  forall frameIn opIn opOut frameOut eh ef.
+  forall (frameIn :: RowOf Type) (opIn :: RowOf Type) (opOut :: RowOf Type) (frameOut :: RowOf Type)
+         (eh :: RowOf PolyHEffect) (ef :: RowOf PolyEffect).
   FramePlan frameIn opIn opOut frameOut
   -> Penelope eh ef opIn opOut
   -> Penelope eh ef frameIn frameOut
@@ -227,7 +228,10 @@ See Note [Frame-Rule Automatic Wire Synthesis] [ref:note-frame-rule-wiring].
 {-# INLINE (>&>) #-}
 infixr 1 >&>
 (>&>) ::
-  forall frameIn ins1 outs1 frameMid ins2 outs2 frameOut eh ef.
+  forall (frameIn :: RowOf Type) (ins1 :: RowOf Type) (outs1 :: RowOf Type)
+         (frameMid :: RowOf Type) (ins2 :: RowOf Type) (outs2 :: RowOf Type)
+         (frameOut :: RowOf Type)
+         (eh :: RowOf PolyHEffect) (ef :: RowOf PolyEffect).
   ( FrameWire frameIn ins1 outs1 frameMid
   , FrameWire frameMid ins2 outs2 frameOut
   ) =>
