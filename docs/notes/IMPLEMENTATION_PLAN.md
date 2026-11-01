@@ -140,7 +140,7 @@ Before assembling `penelope-core`, extend `polytropos-core` and `polytropos-plug
 
 Implement foundational data structures in `packages/penelope-core/src/Penelope/Core/Syntax.hs`:
 
-- [ ] **Milestone 2.1: Type-Level Signatures & Core Syntax GADT**
+- [x] **Milestone 2.1: Type-Level Signatures & Core Syntax GADT**
   - Define `PortSig`: `data PortSig = PortSig (Row Type) (Row Type)`.
   - Define `BranchCont`: `newtype BranchCont m (outs :: Row Type) = BranchCont { runBranchCont :: Record Identity outs -> m }`.
   - Define `Region`: `newtype Region eh ef sig = Region (Penelope eh ef rIns rOuts)`.
@@ -151,12 +151,12 @@ Implement foundational data structures in `packages/penelope-core/src/Penelope/C
     - `OpH Word# !(RowMorph opIns ins) !(Record (Region eh ef) regions) Any !(Record (BranchCont (Penelope eh ef ins outs)) exits)`
     - `ScopeRow !(RowMorph ehSub ehFull) !(RowMorph efSub efFull) !(Penelope ehSub efSub ins outs)`
 
-- [ ] **Milestone 2.2: Pure Route Peephole Optimizer**
+- [x] **Milestone 2.2: Pure Route Peephole Optimizer**
   - Implement smart constructor `route :: RowMorph outs ins -> Penelope eh ef ins outs`.
   - Implement peephole fusion in sequential composition: `Route m1 >>> Route m2` fuses to `Route (composeRowMorph m1 m2)`.
   - Implement identity elision: if `m` is the identity morphism, `Route m` acts as an immediate no-op.
 
-- [ ] **Milestone 2.3: Zero-Overhead Smart Constructors (`sendPolyF`, `sendPolyH`)**
+- [x] **Milestone 2.3: Zero-Overhead Smart Constructors (`sendPolyF`, `sendPolyH`)**
   - Implement `sendPolyF`: compile-time tag lookup via `ConstructorIndex l ef`, injecting operation payload via `unsafeCoerce#` with static `RowMorph` gather wiring.
   - Implement `sendPolyH`: compile-time tag lookup via `ConstructorIndex l eh`, packaging sub-regions into `Record (Region eh ef) regions`.
 
@@ -166,18 +166,18 @@ Implement foundational data structures in `packages/penelope-core/src/Penelope/C
 
 Implement the polycategorical wiring combinators in `packages/penelope-core/src/Penelope/Core/Wiring.hs`:
 
-- [ ] **Milestone 3.1: Sequential Composition & Coyoneda Leaf Fusion (`>>>`)**
+- [x] **Milestone 3.1: Sequential Composition & Coyoneda Leaf Fusion (`>>>`)**
   - Implement `seqPenelope :: Penelope eh ef a b -> Penelope eh ef b c -> Penelope eh ef a c`.
   - Implement Coyoneda-style continuation fusion over `Record (BranchCont ...) exits` using `Polytropos.Record.rmapFused`, avoiding intermediate `SmallArray#` allocations during chained binds.
 
-- [ ] **Milestone 3.2: Frame-Rule Automatic Port Wiring (`>&>`)**
+- [x] **Milestone 3.2: Frame-Rule Automatic Port Wiring (`>&>`)**
   - Implement `(>&>) :: (FrameWire frameIn ins1 outs1 frameMid, FrameWire frameMid ins2 outs2 frameOut) => Penelope eh ef ins1 outs1 -> Penelope eh ef ins2 outs2 -> Penelope eh ef frameIn frameOut`.
   - Execute register frame preservation: automatically pull named inputs from the live frame, scatter output results, and preserve untouched ports in $O(|frame|)$ time.
 
-- [ ] **Milestone 3.3: Disjunctive Multi-Exit Fanout (`>?<`)**
+- [x] **Milestone 3.3: Disjunctive Multi-Exit Fanout (`>?<`)**
   - Implement $k$-way exit branching combinator `(>?<)` binding an operation's `exits` row with a `Record` of $k$ downstream handler stages in $O(1)$ by zipping with the slot array.
 
-- [ ] **Milestone 3.4: Zero-Traversal Row Weakening (`ScopeRow`)**
+- [x] **Milestone 3.4: Zero-Traversal Row Weakening (`ScopeRow`)**
   - Implement `weakenRow :: (KnownRowMorph ehSub ehFull, KnownRowMorph efSub efFull) => Penelope ehSub efSub ins outs -> Penelope ehFull efFull ins outs`.
   - Wrap computation in `ScopeRow rowMorph rowMorph` in $O(1)$ without walking the syntax tree.
 
@@ -187,22 +187,22 @@ Implement the polycategorical wiring combinators in `packages/penelope-core/src/
 
 Implement the static analysis, higher-order elaboration, and first-order interpretation engines:
 
-- [ ] **Milestone 4.1: Static Pre-Execution Analysis (`penelope-static`)**
+- [x] **Milestone 4.1: Static Pre-Execution Analysis (`penelope-static`)**
   - Implement `StaticPenelope f eh ef ins outs = StaticPenelope !(f ()) !(Penelope eh ef ins outs)` in `packages/penelope-static/src/Penelope/Static/Analysis.hs`.
   - Implement AST traversal extracting capability strands, configuration requirements, and schema manifests.
   - Implement per-port liveness analysis (last-use lifetime extraction) across `RowMorph` edges to enable buffer reuse.
 
-- [ ] **Milestone 4.2: Phase 1 — Single-Pass Higher-Order Elaboration (`elaborateAll`)**
+- [x] **Milestone 4.2: Phase 1 — Single-Pass Higher-Order Elaboration (`elaborateAll`)**
   - Implement `newtype Elaborator eh' ef h = Elaborator { runElaborator :: ... }`.
   - Implement `elaborateAll :: Record (Elaborator '[] ef) eh -> Penelope eh ef ins outs -> Penelope '[] ef ins outs`.
   - Walk the AST bottom-up in a single pass; at each `OpH tag# inMap regions opAny conts`, look up elaborator in $O(1)$ via `indexSmallArray#` and lower scoped regions into pure first-order operations in `ef`.
 
-- [ ] **Milestone 4.3: Phase 2 — Bulk Vector-Dispatched Interpretation (`interpretAll`)**
+- [x] **Milestone 4.3: Phase 2 — Bulk Vector-Dispatched Interpretation (`interpretAll`)**
   - Implement `newtype Handler ef m e = Handler { runHandler :: ... }`.
   - Implement `interpretAll :: Category m => (forall i o. RowMorph o i -> m i o) -> Record (Handler '[] m) ef -> Penelope '[] ef ins outs -> m ins outs`.
   - Dispatch each `OpF tag# inMap opAny conts` via branchless `indexSmallArray#` in $O(1)$ with zero `eqWord#` cascaded comparisons.
 
-- [ ] **Milestone 4.4: Partial / Layered Interpretation (`interpretSub`)**
+- [x] **Milestone 4.4: Partial / Layered Interpretation (`interpretSub`)**
   - Implement `interpretSub` for partial effect stack peeling (e.g., interpreting `State` and `Reader` while preserving `IO`).
   - Utilize `Polytropos.Plugin`'s `RowPartition` to partition handler vectors in $O(1)$ without linear search.
 
@@ -212,17 +212,17 @@ Implement the static analysis, higher-order elaboration, and first-order interpr
 
 Ground user-facing abstractions in `packages/penelope-effects/`:
 
-- [ ] **Milestone 5.1: The Heftia Unary Facade (`Penelope.Effects.Unary`)**
+- [x] **Milestone 5.1: The Heftia Unary Facade (`Penelope.Effects.Unary`)**
   - Define `newtype Eff eh ef a = Eff (Penelope eh ef '[] '["val" := a])`.
   - Implement `Functor`, `Applicative`, and `Monad` for `Eff eh ef`.
   - Provide adapters embedding standard unary GADTs (`f :: Type -> Type`) into `PolyEffect`.
 
-- [ ] **Milestone 5.2: The Kernmantle Binary Facade (`Penelope.Effects.Binary`)**
+- [x] **Milestone 5.2: The Kernmantle Binary Facade (`Penelope.Effects.Binary`)**
   - Define `newtype Rope eh ef a b = Rope (Penelope eh ef '["in" := a] '["out" := b])`.
   - Implement `Category`, `Arrow`, `ArrowChoice`, `Profunctor`, `Strong`, and `Choice` for `Rope`.
   - Implement `deriveRouter` compiling a `Record` of `Rope` handlers into an $O(1)$ jump table over `Polytropos.Variant`.
 
-- [ ] **Milestone 5.3: Native Multi-Region & Multi-Exit Effect Battery**
+- [x] **Milestone 5.3: Native Multi-Region & Multi-Exit Effect Battery**
   - `Penelope.Effects.Control`: Multi-region `While` (`"cond"` + `"body"`), multi-exit `Switch`, and `Saga` (`"try"` + `"compensate"` + `"catch"`).
   - `Penelope.Effects.Coroutine` & `NonDet`: Delimited continuations with frame cloning and suspension.
   - `Penelope.Effects.UnliftIO` & `Provider`: Sound scoped resource management with zero dynamic handler leaks.

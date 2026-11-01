@@ -12,3 +12,13 @@
     lhs: "getField @a x"
     rhs: "x.a"
     note: "Prefer native OverloadedRecordDot syntax over explicit getField"
+
+- ignore: {name: "Unused LANGUAGE pragma"}
+- ignore: {name: "Avoid lambda"}
+- ignore: {name: "Use const"}
+- ignore: {name: "Use >=>"}
+- ignore: {name: "Use tuple-section"}
+- ignore: {name: "Redundant pure"}
+- ignore: {name: "Use id"}
+- ignore: {name: "Use <$>"}
+- ignore: {name: "Eta reduce"}
