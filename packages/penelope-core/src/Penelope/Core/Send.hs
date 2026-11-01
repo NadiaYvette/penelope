@@ -31,6 +31,7 @@ module Penelope.Core.Send
   , sendPolyH'
   ) where
 
+import Data.Kind (Type)
 import GHC.Exts (Any, Word (W#), unsafeCoerce#)
 import GHC.TypeLits (Symbol)
 import Penelope.Core.Syntax (Penelope (..), PolyEffect, PolyHEffect)

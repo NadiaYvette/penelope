@@ -130,7 +130,7 @@ import Data.Primitive.SmallArray
   , sizeofSmallArray
   , writeSmallArray
   )
-import GHC.Exts (Word (..), unsafeCoerce#)
+import GHC.Exts (Int (..), Word (..), int2Word#, unsafeCoerce#, word2Int#)
 import Penelope.Core.Route (fuseRoute, isIdentityRowMorph)
 import Penelope.Core.Syntax
   ( BranchCont (..)
@@ -256,11 +256,13 @@ seqScopeRow ehM efM p next = case p of
   LiftPure inMap f (BranchCont k) ->
     LiftPure inMap f (BranchCont (\res -> seqScopeRow ehM efM (k res) next))
   OpF tag# inMap payload conts ->
-    let !(W# fullTag#) = indexRowMorph efM (W# tag#)
+    let !(I# fullIdx#) = indexRowMorph efM (I# (word2Int# tag#))
+        !fullTag# = int2Word# fullIdx#
     in OpF fullTag# inMap payload
          (rmapFused (\(BranchCont k) -> BranchCont (\res -> seqScopeRow ehM efM (k res) next)) conts)
   OpH tag# inMap regions payload conts ->
-    let !(W# fullTag#) = indexRowMorph ehM (W# tag#)
+    let !(I# fullIdx#) = indexRowMorph ehM (I# (word2Int# tag#))
+        !fullTag# = int2Word# fullIdx#
         !regions' = rmapFused (\(Region reg) -> Region (ScopeRow ehM efM reg)) regions
     in OpH fullTag# inMap regions' payload
          (rmapFused (\(BranchCont k) -> BranchCont (\res -> seqScopeRow ehM efM (k res) next)) conts)
