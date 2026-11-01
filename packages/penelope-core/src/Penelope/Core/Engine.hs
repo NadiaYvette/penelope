@@ -12,6 +12,8 @@ See Note [Two-Phase Weaving and Unweaving] [ref:note-two-phase-engine].
 -}
 module Penelope.Core.Engine
   ( module Penelope.Core.Engine.Elaborate
+  , module Penelope.Core.Engine.Interpret
   ) where
 
 import Penelope.Core.Engine.Elaborate
+import Penelope.Core.Engine.Interpret

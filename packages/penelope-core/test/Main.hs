@@ -321,3 +321,89 @@ main = hspec $ do
       case elaborated of
         ScopeRow _ _ _ -> (1 :: Int) `shouldBe` 1
         _              -> expectationFailure "Expected ScopeRow constructor after elaboration"
+
+  describe "Penelope.Core.Engine.Interpret" $ do
+    it "evaluates pure routes with runPenelopePure" $ do
+      let pipe :: Penelope '[] '[] '["x" ':= Int, "y" ':= String] '["x" ':= Int]
+          pipe = route
+          inFrame = insertField (Field @"x") (42 :: Int)
+                  $ insertField (Field @"y") ("test" :: String)
+                  $ emptyRecord
+          outFrame = runPenelopePure pipe inFrame
+          !(Identity xVal) = indexSmallArray (let RowRep (Rep _ arr) = outFrame in arr) 0
+      (unsafeCoerce# xVal :: Int) `shouldBe` 42
+
+    it "evaluates pure transformations with runPenelopePure" $ do
+      let m = rowMorph @'["x" ':= Int] @'["x" ':= Int]
+          f inF =
+            let !(Identity x) = indexSmallArray (let RowRep (Rep _ arr) = inF in arr) 0
+                !newX = (unsafeCoerce# x :: Int) + 1
+            in insertField (Field @"x") newX emptyRecord
+          pipe :: Penelope '[] '[] '["x" ':= Int] '["x" ':= Int]
+          pipe = LiftPure m f (BranchCont (\_ -> route))
+          inFrame = insertField (Field @"x") (42 :: Int) emptyRecord
+          outFrame = runPenelopePure pipe inFrame
+          !(Identity xVal) = indexSmallArray (let RowRep (Rep _ arr) = outFrame in arr) 0
+      (unsafeCoerce# xVal :: Int) `shouldBe` 43
+
+    it "dispatches first-order operations via interpretAll" $ do
+      let retCont = BranchCont (\_ -> route @'["x" ':= Int] @'["x" ':= Int])
+          conts = insertField (Field @"ret") retCont emptyRecord
+          op :: Penelope '[] TestEF '["x" ':= Int] '["x" ':= Int]
+          op = sendPolyF' @"get" @'["x" ':= Int] (100 :: Int) conts
+
+          getHandler :: Handler '[] (FrameKleisli Identity) TestGet
+          getHandler = Handler $ \_inMap _payload kConts ->
+            let !(Identity elabK) = indexSmallArray (let RowRep (Rep _ arr) = kConts in arr) 0
+                !(BranchCont retK) = unsafeCoerce# elabK
+                resFrame = insertField (Field @"x") (99 :: Int) emptyRecord
+            in FrameKleisli $ \_inF -> runFrameKleisli (retK resFrame) resFrame
+
+          dummyPutHandler :: Handler '[] (FrameKleisli Identity) TestPut
+          dummyPutHandler = Handler $ \_inMap _payload kConts ->
+            let !(Identity elabK) = indexSmallArray (let RowRep (Rep _ arr) = kConts in arr) 0
+                !(BranchCont retK) = unsafeCoerce# elabK
+            in FrameKleisli $ \inF -> runFrameKleisli (retK emptyRecord) inF
+
+          handlers = insertField (Field @"get") getHandler
+                   $ insertField (Field @"put") dummyPutHandler
+                   $ emptyRecord
+
+          kleisli = interpretAll handlers op
+          inFrame = insertField (Field @"x") (0 :: Int) emptyRecord
+          Identity outFrame = runFrameKleisli kleisli inFrame
+          !(Identity xVal) = indexSmallArray (let RowRep (Rep _ arr) = outFrame in arr) 0
+      (unsafeCoerce# xVal :: Int) `shouldBe` 99
+
+    it "interprets through ScopeRow boundary nodes using contravariant gatherRecord" $ do
+      let retCont = BranchCont (\_ -> route @'["x" ':= Int] @'["x" ':= Int])
+          conts = insertField (Field @"ret") retCont emptyRecord
+          inner :: Penelope '[] TestEF '["x" ':= Int] '["x" ':= Int]
+          inner = sendPolyF' @"get" @'["x" ':= Int] (100 :: Int) conts
+
+          weakened :: Penelope '[] TestEFExtended '["x" ':= Int] '["x" ':= Int]
+          weakened = weakenEF @TestEFExtended inner
+
+          getHandler :: Handler '[] (FrameKleisli Identity) TestGet
+          getHandler = Handler $ \_inMap _payload kConts ->
+            let !(Identity elabK) = indexSmallArray (let RowRep (Rep _ arr) = kConts in arr) 0
+                !(BranchCont retK) = unsafeCoerce# elabK
+                resFrame = insertField (Field @"x") (99 :: Int) emptyRecord
+            in FrameKleisli $ \_inF -> runFrameKleisli (retK resFrame) resFrame
+
+          dummyPutHandler :: Handler '[] (FrameKleisli Identity) TestPut
+          dummyPutHandler = Handler $ \_inMap _payload kConts ->
+            let !(Identity elabK) = indexSmallArray (let RowRep (Rep _ arr) = kConts in arr) 0
+                !(BranchCont retK) = unsafeCoerce# elabK
+            in FrameKleisli $ \inF -> runFrameKleisli (retK emptyRecord) inF
+
+          handlersExt = insertField (Field @"get") getHandler
+                      $ insertField (Field @"put") dummyPutHandler
+                      $ insertField (Field @"extra") getHandler
+                      $ emptyRecord
+
+          kleisli = interpretAll handlersExt weakened
+          inFrame = insertField (Field @"x") (0 :: Int) emptyRecord
+          Identity outFrame = runFrameKleisli kleisli inFrame
+          !(Identity xVal) = indexSmallArray (let RowRep (Rep _ arr) = outFrame in arr) 0
+      (unsafeCoerce# xVal :: Int) `shouldBe` 99
