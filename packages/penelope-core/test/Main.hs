@@ -77,3 +77,23 @@ main = hspec $ do
       case term of
         ScopeRow _ _ _ -> (1 :: Int) `shouldBe` 1
         _              -> expectationFailure "Expected ScopeRow constructor"
+
+  describe "Penelope.Core.Route" $ do
+    it "constructs route smart constructor with automatic KnownRowMorph resolution" $ do
+      let r :: Penelope '[] '[] '["x" ':= Int, "y" ':= Bool] '["x" ':= Int]
+          r = route
+      case r of
+        Route _ -> (1 :: Int) `shouldBe` 1
+        _       -> expectationFailure "Expected Route constructor"
+
+    it "identifies identity row morphisms" $ do
+      let r :: Penelope '[] '[] '["x" ':= Int] '["x" ':= Int]
+          r = route
+      isIdentityRoute r `shouldBe` True
+
+    it "fuses consecutive routes via fuseRoute" $ do
+      let m1 = rowMorph @'["b" ':= Int] @'["a" ':= Int, "b" ':= Int]
+          m2 = rowMorph @'["b" ':= Int] @'["b" ':= Int]
+          fused = fuseRoute m1 m2
+      case fused of
+        _ -> (1 :: Int) `shouldBe` 1

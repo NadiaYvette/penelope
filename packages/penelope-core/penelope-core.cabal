@@ -12,6 +12,7 @@ library
   exposed-modules:
     Penelope.Core
     Penelope.Core.Syntax
+    Penelope.Core.Route
   hs-source-dirs: src
   default-language: Haskell2010
   default-extensions:
