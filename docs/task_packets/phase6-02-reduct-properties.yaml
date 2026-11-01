@@ -1,0 +1,74 @@
+---
+id: phase6-02-reduct-properties
+title: Institutional Satisfaction & Reduct Property Tests
+description: |
+  Implement Milestone 6.2 of Phase 6 (Formal Verification, Soundness Certification & Benchmarking
+  per ~/src/penelope/PLAN.md §Phase 6 and docs/notes/IMPLEMENTATION_PLAN.md §Phase 6).
+  Establishes QuickCheck randomized property tests verifying foundational institutional
+  invariants across algebraic effect representations:
+
+  Architectural Invariants & Proof Obligations:
+  - Reduct-Evaluation Identity (Goguen-Burstall Satisfaction Condition):
+    Verify that eval_J(H, sigma_*(P)) === eval_I(sigma^*(H), P) holds across arbitrary randomized
+    row embeddings, permutations, and initial register frame values
+    (Note [Institutional Satisfaction and Zero-Traversal Weakening] [ref:note-satisfaction-weakening]).
+  - Functorial Reduct Transitivity:
+    Verify that (sigma2 . sigma1)^*(H) === sigma1^*(sigma2^*(H)) holds for chained row weakening.
+  - Static-Elaboration Commutativity:
+    Verify that static metadata accumulated by StaticPenelope is invariant under elaborateAll
+    (Note [Static Reflection and Cayley Analysis] [ref:note-static-cayley]).
+  - Structural Liveness Invariance:
+    Verify that external frame port reads (lrReadFrameSlots) and exit branching bounds are preserved
+    under higher-order macro elaboration (elaborateAll).
+  - Ground Note [Core Architecture] [ref:note-core-architecture],
+    Note [Institutional Satisfaction and Zero-Traversal Weakening] [ref:note-satisfaction-weakening],
+    Note [Two-Phase Weaving and Unweaving] [ref:note-two-phase-engine], and
+    Note [Static Reflection and Cayley Analysis] [ref:note-static-cayley].
+
+dependencies:
+  - phase6-01-core-inspection
+
+packages:
+  - penelope-static
+  - penelope-core
+
+executor: script
+model: gemini-3.8-flash-high
+skills:
+  - tricorder
+  - code-navigation
+  - contextful
+max_turns: 12
+run_budget: 600
+max_repair_attempts: 3
+
+steps:
+  - id: configure-properties-cabal
+    name: Configure test-suite properties in packages/penelope-static/penelope-static.cabal
+    action: |
+      Add `test-suite properties` to `packages/penelope-static/penelope-static.cabal` with
+      QuickCheck, Hspec, and necessary language extensions.
+    duration: "15m"
+
+  - id: implement-property-tests
+    name: Implement property tests in packages/penelope-static/test/Properties.hs
+    action: |
+      In `packages/penelope-static/test/Properties.hs`:
+      1. Define algebraic command language (`Command`) and arbitrary permutation generators.
+      2. Implement Reduct-Evaluation Identity property test with QuickCheck.
+      3. Implement Functorial Reduct Transitivity property test with QuickCheck.
+      4. Implement Static-Elaboration Commutativity and Liveness Invariance tests.
+      5. Ground architectural Note references.
+    duration: "45m"
+
+  - id: verify-gate
+    name: Run verification gate
+    action: |
+      Run `cabal test penelope-static:test:properties` and execute `sh scripts/tasks/phase6-02-reduct-properties-verify.sh`.
+    duration: "10m"
+
+success_criteria:
+  - Package `penelope-static` builds warning-free under `-Wall -Wcompat -Wredundant-constraints`.
+  - All 5 QuickCheck property suites pass 100 tests each (0 failures).
+  - Note [Core Architecture] [ref:note-core-architecture], Note [Institutional Satisfaction and Zero-Traversal Weakening] [ref:note-satisfaction-weakening], Note [Two-Phase Weaving and Unweaving] [ref:note-two-phase-engine], and Note [Static Reflection and Cayley Analysis] [ref:note-static-cayley] referenced in source.
+  - Zero forbidden partial functions in `packages/penelope-static/src/`.
