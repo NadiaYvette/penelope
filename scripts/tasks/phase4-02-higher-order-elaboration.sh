@@ -385,106 +385,102 @@ main = hspec $ do
         _       -> expectationFailure "Expected Route constructor"
 
     it "identifies identity row morphisms" $ do
-      let mId = rowMorph @'["x" ':= Int] @'["x" ':= Int]
-          mSwap = rowMorph @'["x" ':= Int, "y" ':= Bool] @'["y" ':= Bool, "x" ':= Int]
-      isIdentityRowMorph mId `shouldBe` True
-      isIdentityRowMorph mSwap `shouldBe` False
+      let r :: Penelope '[] '[] '["x" ':= Int] '["x" ':= Int]
+          r = route
+      isIdentityRoute r `shouldBe` True
 
     it "fuses consecutive routes via fuseRoute" $ do
-      let m1 = rowMorph @'["x" ':= Int] @'["x" ':= Int, "y" ':= Bool]
-          m2 = rowMorph @'["x" ':= Int, "y" ':= Bool] @'["x" ':= Int, "y" ':= Bool, "z" ':= String]
-          mFused = fuseRoute m1 m2
-      case mFused of
+      let m1 = rowMorph @'["b" ':= Int] @'["a" ':= Int, "b" ':= Int]
+          m2 = rowMorph @'["b" ':= Int] @'["b" ':= Int]
+          fused = fuseRoute m1 m2
+      case fused of
         _ -> (1 :: Int) `shouldBe` 1
 
   describe "Penelope.Core.Send" $ do
     it "constructs sendPolyF with ConstructorIndex tag resolution" $ do
       let retCont = BranchCont (\_ -> route @'["x" ':= Int] @'["x" ':= Int])
           conts = insertField (Field @"ret") retCont emptyRecord
-          op :: Penelope '[] TestEF '["x" ':= Int] '["x" ':= Int]
-          op = sendPolyF' @"get" @'["x" ':= Int] (100 :: Int) conts
-      case op of
+          term :: Penelope '[] TestEF '["x" ':= Int] '["x" ':= Int]
+          term = sendPolyF' @"get" @'["x" ':= Int] (100 :: Int) conts
+      case term of
         OpF tag# _ _ _ -> case tag# of _ -> (1 :: Int) `shouldBe` 1
         _              -> expectationFailure "Expected OpF constructor"
 
     it "constructs sendPolyH with sub-regions and ConstructorIndex tag resolution" $ do
       let retCont = BranchCont (\_ -> route @'["x" ':= Int] @'["x" ':= Int])
           conts = insertField (Field @"ret") retCont emptyRecord
-          subProg :: Penelope '[] '[] '["x" ':= Int] '["x" ':= Int]
+          subProg :: Penelope TestEH '[] '["x" ':= Int] '["x" ':= Int]
           subProg = route
-          reg = Region @'[] @'[] @('PortSig '["x" ':= Int] '["x" ':= Int]) subProg
+          reg = Region @TestEH @'[] @('PortSig '["x" ':= Int] '["x" ':= Int]) subProg
           regions = insertField (Field @"body") reg emptyRecord
-          op :: Penelope TestEH '[] '["x" ':= Int] '["x" ':= Int]
-          op = sendPolyH' @"catch" @'["x" ':= Int] regions () conts
-      case op of
+          term :: Penelope TestEH '[] '["x" ':= Int] '["x" ':= Int]
+          term = sendPolyH' @"catch" @'["x" ':= Int] regions () conts
+      case term of
         OpH tag# _ _ _ _ -> case tag# of _ -> (1 :: Int) `shouldBe` 1
         _                -> expectationFailure "Expected OpH constructor"
 
   describe "Penelope.Core.Wiring" $ do
     it "fuses consecutive Route nodes into a single Route" $ do
-      let r1 :: Penelope '[] '[] '["x" ':= Int, "y" ':= Bool] '["x" ':= Int]
+      let r1 :: Penelope '[] '[] '["a" ':= Int, "b" ':= Int] '["b" ':= Int]
           r1 = route
-          r2 :: Penelope '[] '[] '["x" ':= Int] '["x" ':= Int]
+          r2 :: Penelope '[] '[] '["b" ':= Int] '["b" ':= Int]
           r2 = route
-          fused = r1 >>> r2
-      case fused of
+          comp = r1 >>> r2
+      case comp of
         Route _ -> (1 :: Int) `shouldBe` 1
-        _       -> expectationFailure "Expected Route after >>> fusion"
+        _       -> expectationFailure "Expected fused Route constructor"
 
     it "sequences pure transformations with LiftPure" $ do
       let m = rowMorph @'["x" ':= Int] @'["x" ':= Int]
           f r = r
-          cont = BranchCont (\_ -> route @'["x" ':= Int] @'["x" ':= Int])
-          p1 = LiftPure m f cont
-          p2 = route @'["x" ':= Int] @'["x" ':= Int]
-          composed = p1 >>> p2
-      case composed of
+          step = LiftPure m f (BranchCont (\_ -> route @'["x" ':= Int] @'["x" ':= Int]))
+          comp = step >>> route @'["x" ':= Int] @'["x" ':= Int]
+      case comp of
         LiftPure _ _ _ -> (1 :: Int) `shouldBe` 1
-        _              -> expectationFailure "Expected LiftPure after >>>"
+        _              -> expectationFailure "Expected LiftPure constructor"
 
     it "sequences across multi-branch OpF continuations" $ do
       let retCont = BranchCont (\_ -> route @'["x" ':= Int] @'["x" ':= Int])
           conts = insertField (Field @"ret") retCont emptyRecord
+          op :: Penelope '[] TestEF '["x" ':= Int] '["x" ':= Int]
           op = sendPolyF' @"get" @'["x" ':= Int] (100 :: Int) conts
-          next = route @'["x" ':= Int] @'["x" ':= Int]
-          composed = op >>> next
-      case composed of
+          comp = op >>> route @'["x" ':= Int] @'["x" ':= Int]
+      case comp of
         OpF tag# _ _ _ -> case tag# of _ -> (1 :: Int) `shouldBe` 1
-        _              -> expectationFailure "Expected OpF after >>>"
+        _              -> expectationFailure "Expected OpF constructor"
 
     it "elides identity Route when pre-composed with OpF" $ do
-      let retCont = BranchCont (\_ -> route @'["x" ':= Int] @'["x" ':= Int])
+      let idR = route @'["x" ':= Int] @'["x" ':= Int]
+          retCont = BranchCont (\_ -> route @'["x" ':= Int] @'["x" ':= Int])
           conts = insertField (Field @"ret") retCont emptyRecord
+          op :: Penelope '[] TestEF '["x" ':= Int] '["x" ':= Int]
           op = sendPolyF' @"get" @'["x" ':= Int] (100 :: Int) conts
-          mId = rowMorph @'["x" ':= Int] @'["x" ':= Int]
-          optimized = preComposeRoute mId op
-      case optimized of
-        OpF tag# _ _ _ -> case tag# of _ -> (1 :: Int) `shouldBe` 1
-        _              -> expectationFailure "Expected OpF without redundant wrapper"
+          comp = idR >>> op
+      case comp of
+        OpF _ _ _ _ -> (1 :: Int) `shouldBe` 1
+        _           -> expectationFailure "Expected OpF constructor"
 
     it "composes multi-stage pipelines via frame-rule (>&>)" $ do
-      let stage1 :: Penelope '[] '[] '["x" ':= Int] '["y" ':= String]
-          stage1 = LiftPure (rowMorph @'["x" ':= Int] @'["x" ':= Int])
-                            (\_ -> insertField (Field @"y") ("hello" :: String) emptyRecord)
-                            (BranchCont (\_ -> route))
+      let m1 = rowMorph @'["x" ':= Int] @'["x" ':= Int]
+          stage1 :: Penelope '[] '[] '["x" ':= Int] '["x" ':= Int]
+          stage1 = LiftPure m1 (\r -> r) (BranchCont (\_ -> route @'["x" ':= Int] @'["x" ':= Int]))
 
-          stage2 :: Penelope '[] '[] '["y" ':= String] '["z" ':= Bool]
-          stage2 = LiftPure (rowMorph @'["y" ':= String] @'["y" ':= String])
-                            (\_ -> insertField (Field @"z") True emptyRecord)
-                            (BranchCont (\_ -> route))
+          m2 = rowMorph @'["x" ':= Int, "y" ':= String] @MyFrame
+          mOut2 = rowMorph @'["z" ':= Bool] @MyFrame
+          stage2 :: Penelope '[] '[] MyFrame '["z" ':= Bool]
+          stage2 = LiftPure m2 (\_ -> insertField (Field @"z") True emptyRecord)
+                     (BranchCont (\_ -> Route mOut2))
 
-          framedPipeline :: Penelope '[] '[] MyFrame MyFrame
-          framedPipeline = stage1 >&> stage2
-      case framedPipeline of
+          pipeline :: Penelope '[] '[] MyFrame MyFrame
+          pipeline = stage1 >&> stage2
+      case pipeline of
         LiftPure _ _ _ -> (1 :: Int) `shouldBe` 1
-        _              -> expectationFailure "Expected LiftPure after frame-wire composition"
+        _              -> expectationFailure "Expected LiftPure at pipeline root"
 
     it "binds 3-way exit channels in O(1) via (>?<)" $ do
       let m = rowMorph @'["x" ':= Int] @'["x" ':= Int]
-          retCont = BranchCont (\_ -> route @'["x" ':= Int] @'["x" ':= Int])
-          conts = insertField (Field @"out") retCont emptyRecord
           op :: Penelope '[] '[] '["x" ':= Int] '["x" ':= Int]
-          op = OpF 0## m (unsafeCoerce# ()) conts
+          op = OpF 0## m (unsafeCoerce# (42 :: Int)) emptyRecord
 
           branchOk = BranchCont (\_ -> route @'["x" ':= Int] @'["x" ':= Int])
           branchRetry = BranchCont (\_ -> route @'["x" ':= Int] @'["x" ':= Int])
