@@ -290,7 +290,6 @@ cat <<'EOF' > packages/penelope-core/test/Main.hs
 
 module Main (main) where
 
-import Data.Text (Text)
 import Test.Hspec
 import Penelope.Core
 import Polytropos (Field (..), emptyRecord, insertField)
@@ -306,7 +305,7 @@ type TestEF = '["get" ':= TestGet, "put" ':= TestPut]
 data TestCatch :: PolyHEffect
 type TestEH = '["catch" ':= TestCatch]
 
-type MyFrame = '["x" ':= Int, "y" ':= Text, "z" ':= Bool]
+type MyFrame = '["x" ':= Int, "y" ':= String, "z" ':= Bool]
 
 main :: IO ()
 main = hspec $ do
@@ -456,9 +455,9 @@ main = hspec $ do
           stage1 :: Penelope '[] '[] '["x" ':= Int] '["x" ':= Int]
           stage1 = LiftPure m1 (\r -> r) (BranchCont (\_ -> route @'["x" ':= Int] @'["x" ':= Int]))
 
-          m2 = rowMorph @'["x" ':= Int, "y" ':= Text] @'["x" ':= Int, "y" ':= Text]
+          m2 = rowMorph @'["x" ':= Int, "y" ':= String] @'["x" ':= Int, "y" ':= String]
           mOut2 = rowMorph @'["z" ':= Bool] @'["z" ':= Bool]
-          stage2 :: Penelope '[] '[] '["x" ':= Int, "y" ':= Text] '["z" ':= Bool]
+          stage2 :: Penelope '[] '[] '["x" ':= Int, "y" ':= String] '["z" ':= Bool]
           stage2 = LiftPure m2 (\_ -> insertField (Field @"z") True emptyRecord)
                      (BranchCont (\_ -> Route mOut2))
 
