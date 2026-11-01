@@ -15,12 +15,17 @@
 
 module Main (main) where
 
+import Control.Arrow (Arrow (..), ArrowChoice (..), (>>>))
+import Control.Category (Category (..))
 import Data.Functor.Identity (Identity (..))
 import Data.IORef (newIORef, readIORef, writeIORef)
 import Data.Kind (Type)
+import Data.Primitive.SmallArray (indexSmallArray)
+import GHC.Exts (unsafeCoerce#)
 import Penelope.Effects
-import Polytropos (Field (..), emptyRecord, insertField)
-import Polytropos.Core (Pair (..))
+import Polytropos (Field (..), Record, Variant, emptyRecord, injectVariant, insertField)
+import Polytropos.Core (Pair (..), Rep (..), RowRep (..))
+import Prelude hiding (id, (.))
 import Test.Hspec
 
 -- Unary Effect GADTs for testing
@@ -33,6 +38,9 @@ data MsgEff :: Type -> Type where
 
 type AskEF = '["ask" ':= UnaryEffect AskEff]
 type MsgEF = '["msg" ':= UnaryEffect MsgEff]
+
+-- Variant type for router tests
+type EventSum = '["click" ':= '["x" ':= Int], "key" ':= '["char" ':= Char]]
 
 main :: IO ()
 main = hspec $ do
@@ -124,3 +132,59 @@ main = hspec $ do
       res `shouldBe` "msg:initial"
       final <- readIORef ref
       final `shouldBe` "updated"
+
+  describe "Penelope.Effects.Binary (Rope Category and Arrow Laws)" $ do
+    it "satisfies Category identity and composition laws" $ do
+      let f :: Rope '[] '[] Int Int
+          f = arr (+ 1)
+          g :: Rope '[] '[] Int Int
+          g = arr (* 2)
+          h :: Rope '[] '[] Int Int
+          h = arr (+ 3)
+      runRopePure (id >>> f) 10 `shouldBe` 11
+      runRopePure (f >>> id) 10 `shouldBe` 11
+      runRopePure ((f >>> g) >>> h) 10 `shouldBe` 25
+      runRopePure (f >>> (g >>> h)) 10 `shouldBe` 25
+
+    it "satisfies Arrow first, second, (***), and (&&&) combinators" $ do
+      let f :: Rope '[] '[] Int Int
+          f = arr (+ 1)
+          g :: Rope '[] '[] String String
+          g = arr reverse
+      runRopePure (first f) (10 :: Int, "hello" :: String) `shouldBe` (11, "hello")
+      runRopePure (second g) (10 :: Int, "hello" :: String) `shouldBe` (10, "olleh")
+      runRopePure (f *** g) (10 :: Int, "world" :: String) `shouldBe` (11, "dlrow")
+      runRopePure (f &&& arr (* 2)) (10 :: Int) `shouldBe` (11, 20)
+
+    it "satisfies ArrowChoice left and right branch routing" $ do
+      let f :: Rope '[] '[] Int Int
+          f = arr (+ 1)
+      runRopePure (left f) (Left 10 :: Either Int String) `shouldBe` Left 11
+      runRopePure (left f) (Right "pass" :: Either Int String) `shouldBe` Right "pass"
+      runRopePure (right f) (Right 20 :: Either String Int) `shouldBe` Right 21
+      runRopePure (right f) (Left "pass" :: Either String Int) `shouldBe` Left "pass"
+
+  describe "Penelope.Effects.Binary (Static Jump-Table deriveRouter)" $ do
+    it "dispatches multi-constructor Variant inputs in O(1) via deriveRouter" $ do
+      let hClick :: Rope '[] '[] (Record '["x" ':= Int]) String
+          hClick = arr $ \r ->
+            let !(Identity x) = indexSmallArray (let RowRep (Rep _ arrRep) = r in arrRep) 0
+            in "clicked:" <> show (unsafeCoerce# x :: Int)
+
+          hKey :: Rope '[] '[] (Record '["char" ':= Char]) String
+          hKey = arr $ \r ->
+            let !(Identity c) = indexSmallArray (let RowRep (Rep _ arrRep) = r in arrRep) 0
+            in "key:" <> [unsafeCoerce# c :: Char]
+
+          handlers = insertField (Field @"click") hClick
+                   $ insertField (Field @"key") hKey
+                   $ emptyRecord
+
+          router :: Rope '[] '[] (Variant EventSum) String
+          router = deriveRouter handlers
+
+          v1 = injectVariant (Field @"click") (insertField (Field @"x") (42 :: Int) emptyRecord)
+          v2 = injectVariant (Field @"key") (insertField (Field @"char") 'q' emptyRecord)
+
+      runRopePure router v1 `shouldBe` "clicked:42"
+      runRopePure router v2 `shouldBe` "key:q"

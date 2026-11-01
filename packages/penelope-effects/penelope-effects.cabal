@@ -12,6 +12,7 @@ library
   exposed-modules:
     Penelope.Effects
     Penelope.Effects.Unary
+    Penelope.Effects.Binary
   hs-source-dirs: src
   default-language: Haskell2010
   default-extensions:
@@ -39,6 +40,7 @@ library
     text >= 2.0,
     containers >= 0.6,
     primitive >= 0.9,
+    profunctors >= 5.6,
     polytropos-core >= 0.1,
     polytropos-plugin >= 0.1,
     penelope-core >= 0.1
@@ -68,5 +70,6 @@ test-suite tests
     polytropos-core >= 0.1,
     polytropos-plugin >= 0.1,
     primitive >= 0.9,
+    profunctors >= 5.6,
     text >= 2.0,
     hspec >= 2.10

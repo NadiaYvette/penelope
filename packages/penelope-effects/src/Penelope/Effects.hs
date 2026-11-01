@@ -30,10 +30,12 @@ module Penelope.Effects
 
     -- * Surface Facades
   , module Penelope.Effects.Unary
+  , module Penelope.Effects.Binary
   ) where
 
 import Data.Text (Text)
 import Penelope.Effects.Unary
+import Penelope.Effects.Binary
 
 -- | Represents a core domain entity within the 'penelope-effects' package.
 --
