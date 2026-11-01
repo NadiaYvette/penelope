@@ -241,7 +241,7 @@ Certify safety, correctness, and performance:
   - Property-test the Reduct-Evaluation Identity: $\text{eval}_J(\mathcal{H}, \sigma_*(P)) \equiv \text{eval}_I(\sigma^*(\mathcal{H}), P)$ across randomized row permutations.
   - Property-test Static-Elaboration Commutativity: verify metadata extracted by `StaticPenelope` is identical before and after `elaborateAll`.
 
-- [ ] **Milestone 6.3: Heftia Scoped Semantics & Concurrency Test Suite**
+- [x] **Milestone 6.3: Heftia Scoped Semantics & Concurrency Test Suite**
   - Port Heftia's `UnliftIO`, `Concurrent`, and `Coroutine` + `Local`/`Catch` interaction test suites.
   - Certify that scoped effects unrolled during `elaborateAll` never leak handles or corrupt state across multi-shot coroutines.
 

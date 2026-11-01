@@ -46,6 +46,15 @@ SPDX-License-Identifier: EUPL-1.2 OR Apache-2.0
     - Certified Static-Elaboration Commutativity and structural port liveness invariance under `elaborateAll`.
     - Fast-forward merged via `yamaarashi-exec` task packet `phase6-02-reduct-properties` (commit `86a9ef2`).
 
+ 7. **Phase 6 Milestone 6.3 (Heftia Scoped Semantics & Concurrency Test Suite) Complete & Merged:**
+    - Grounded `Penelope.Effects.Scoped` (`Reader`/`Local`, `Error`/`Catch`) and `Penelope.Effects.Concurrent` (`Async`, `forkEff`, `asyncEff`, `waitEff`, `runConcurrentIO`).
+    - Established comprehensive test suite (36 assertions) in `packages/penelope-effects/test/Main.hs`.
+    - Certified that higher-order scoped effects (`Local`, `Catch`) unrolled via `elaborateAll` into first-order operations preserve lexical scope without handler leakage.
+    - Certified that delimited continuations yielding from within `local` or `catchError` boundaries restore environments cleanly across step-by-step resumptions.
+    - Certified complete environment isolation across multi-shot non-deterministic branching (`NonDet` + `Local`).
+    - Certified asynchronous concurrency isolation, exception propagation, and balanced resource cleanup (`bracketIO`).
+    - Fast-forward merged via `yamaarashi-exec` task packet `phase6-03-scoped-semantics-concurrency` (commit `9d06d49`).
+
 ---
 
 ## Active Frontier
@@ -57,7 +66,7 @@ SPDX-License-Identifier: EUPL-1.2 OR Apache-2.0
   - [x] **Milestone 6.2: Institutional Satisfaction & Reduct Property Tests (`QuickCheck`)**
     - Property-test Reduct-Evaluation Identity: $\text{eval}_J(\mathcal{H}, \sigma_*(P)) \equiv \text{eval}_I(\sigma^*(\mathcal{H}), P)$ across randomized row permutations.
     - Property-test Static-Elaboration Commutativity: verify metadata extracted by `StaticPenelope` is identical before and after `elaborateAll`.
-  - [ ] **Milestone 6.3: Heftia Scoped Semantics & Concurrency Test Suite**
+  - [x] **Milestone 6.3: Heftia Scoped Semantics & Concurrency Test Suite**
     - Port Heftia's `UnliftIO`, `Concurrent`, and `Coroutine` + `Local`/`Catch` interaction test suites.
     - Certify scoped effects unrolled during `elaborateAll` never leak handles or corrupt state across multi-shot coroutines.
   - [ ] **Milestone 6.4: Allocation & Throughput Benchmarks (`tasty-bench`)**
