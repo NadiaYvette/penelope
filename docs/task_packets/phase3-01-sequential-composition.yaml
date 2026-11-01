@@ -28,7 +28,7 @@ dependencies:
 packages:
   - penelope-core
 
-executor: agy
+executor: script
 model: gemini-3.8-flash-high
 skills:
   - tricorder
