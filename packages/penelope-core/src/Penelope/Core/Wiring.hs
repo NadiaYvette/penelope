@@ -15,7 +15,7 @@
 
 {- |
 Module      : Penelope.Core.Wiring
-Description : Polycategorical wiring combinators, sequential composition, frame-rule auto-wiring, and disjunctive fanout
+Description : Polycategorical wiring combinators, sequential composition, frame-rule auto-wiring, and row weakening
 Copyright   : (c) 2026 The Penelope Authors
 License     : EUPL-1.2 OR Apache-2.0
 Maintainer  : nadia.yvette.chambers@ik.me
@@ -26,7 +26,8 @@ Provides polycategorical composition primitives for the Penelope effect system.
 See Note [Core Architecture] [ref:note-core-architecture],
 Note [Unpacked Polycategorical Representation] [ref:note-unpacked-representation],
 Note [Reified Row Morphisms and Gather-Scatter] [ref:note-row-morph-routing],
-and Note [Frame-Rule Automatic Wire Synthesis] [ref:note-frame-rule-wiring].
+Note [Frame-Rule Automatic Wire Synthesis] [ref:note-frame-rule-wiring],
+and Note [Institutional Satisfaction and Zero-Traversal Weakening] [ref:note-satisfaction-weakening].
 -}
 module Penelope.Core.Wiring
   ( -- * Sequential Composition
@@ -39,6 +40,12 @@ module Penelope.Core.Wiring
 
     -- * Disjunctive Multi-Exit Fanout
   , (>?<)
+
+    -- * Zero-Traversal Row Weakening
+  , weakenRow
+  , weakenRowExplicit
+  , weakenEF
+  , weakenEH
 
     -- * Route Pre-Composition & Peephole Fusion
   , preComposeRoute
@@ -71,6 +78,7 @@ import Polytropos.Core (Rep (..), RowRep (..))
 import Polytropos.RowMorph
   ( FramePlan (..)
   , FrameWire (..)
+  , KnownRowMorph (..)
   , RowMorph (..)
   , composeRowMorph
   , executeFrameScatter
@@ -273,6 +281,65 @@ infixr 1 >?<
   ScopeRow ehM efM (inner >?< handlers)
 (>?<) (Route m) _ =
   Route (unsafeCoerce m)
+
+{- |
+Embed a computation into wider higher-order and first-order effect rows using compile-time
+synthesized 'KnownRowMorph' instances.
+Wraps the computation in 'ScopeRow' in O(1) time with zero syntax traversal.
+
+See Note [Institutional Satisfaction and Zero-Traversal Weakening] [ref:note-satisfaction-weakening].
+-}
+weakenRow ::
+  forall {ehSub :: RowOf PolyHEffect} (ehFull :: RowOf PolyHEffect)
+         {efSub :: RowOf PolyEffect} (efFull :: RowOf PolyEffect)
+         (ins :: RowOf Type) (outs :: RowOf Type).
+  (KnownRowMorph ehSub ehFull, KnownRowMorph efSub efFull) =>
+  Penelope ehSub efSub ins outs
+  -> Penelope ehFull efFull ins outs
+weakenRow = ScopeRow (rowMorph @ehSub @ehFull) (rowMorph @efSub @efFull)
+
+{- |
+Embed a computation into wider effect rows using explicit 'RowMorph' mappings.
+
+See Note [Institutional Satisfaction and Zero-Traversal Weakening] [ref:note-satisfaction-weakening].
+-}
+weakenRowExplicit ::
+  forall (ehSub :: RowOf PolyHEffect) (ehFull :: RowOf PolyHEffect)
+         (efSub :: RowOf PolyEffect) (efFull :: RowOf PolyEffect)
+         (ins :: RowOf Type) (outs :: RowOf Type).
+  RowMorph ehSub ehFull
+  -> RowMorph efSub efFull
+  -> Penelope ehSub efSub ins outs
+  -> Penelope ehFull efFull ins outs
+weakenRowExplicit = ScopeRow
+
+{- |
+Weaken first-order effect row while preserving higher-order effect row.
+
+See Note [Institutional Satisfaction and Zero-Traversal Weakening] [ref:note-satisfaction-weakening].
+-}
+weakenEF ::
+  forall {efSub :: RowOf PolyEffect} (efFull :: RowOf PolyEffect)
+         {eh :: RowOf PolyHEffect}
+         (ins :: RowOf Type) (outs :: RowOf Type).
+  (KnownRowMorph eh eh, KnownRowMorph efSub efFull) =>
+  Penelope eh efSub ins outs
+  -> Penelope eh efFull ins outs
+weakenEF = ScopeRow (rowMorph @eh @eh) (rowMorph @efSub @efFull)
+
+{- |
+Weaken higher-order effect row while preserving first-order effect row.
+
+See Note [Institutional Satisfaction and Zero-Traversal Weakening] [ref:note-satisfaction-weakening].
+-}
+weakenEH ::
+  forall {ehSub :: RowOf PolyHEffect} (ehFull :: RowOf PolyHEffect)
+         {ef :: RowOf PolyEffect}
+         (ins :: RowOf Type) (outs :: RowOf Type).
+  (KnownRowMorph ehSub ehFull, KnownRowMorph ef ef) =>
+  Penelope ehSub ef ins outs
+  -> Penelope ehFull ef ins outs
+weakenEH = ScopeRow (rowMorph @ehSub @ehFull) (rowMorph @ef @ef)
 
 {- |
 Helper to sequence through regional 'ScopeRow' boundaries to downstream continuations.

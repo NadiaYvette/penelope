@@ -24,9 +24,11 @@ import GHC.Exts (unsafeCoerce#)
 data TestGet :: PolyEffect
 data TestPut :: PolyEffect
 type TestEF = '["get" ':= TestGet, "put" ':= TestPut]
+type TestEFExtended = '["get" ':= TestGet, "put" ':= TestPut, "extra" ':= TestGet]
 
 data TestCatch :: PolyHEffect
 type TestEH = '["catch" ':= TestCatch]
+type TestEHExtended = '["catch" ':= TestCatch, "extraH" ':= TestCatch]
 
 type MyFrame = '["x" ':= Int, "y" ':= String, "z" ':= Bool]
 
@@ -210,3 +212,53 @@ main = hspec $ do
           let RowRep (Rep _ arr) = exits
           sizeofSmallArray arr `shouldBe` 3
         _ -> expectationFailure "Expected OpF with 3-way exit continuations"
+
+    it "embeds computations into wider effect rows via weakenRow" $ do
+      let m = rowMorph @'["x" ':= Int] @'["x" ':= Int]
+          retCont = BranchCont (\_ -> route @'["x" ':= Int] @'["x" ':= Int])
+          conts = insertField (Field @"ret") retCont emptyRecord
+          inner :: Penelope '[] TestEF '["x" ':= Int] '["x" ':= Int]
+          inner = sendPolyF' @"get" @'["x" ':= Int] (100 :: Int) conts
+
+          weakened :: Penelope TestEH TestEFExtended '["x" ':= Int] '["x" ':= Int]
+          weakened = weakenRow @TestEH @TestEFExtended inner
+      case weakened of
+        ScopeRow _ _ _ -> (1 :: Int) `shouldBe` 1
+        _              -> expectationFailure "Expected ScopeRow constructor"
+
+    it "embeds computations into wider first-order effect row via weakenEF" $ do
+      let m = rowMorph @'["x" ':= Int] @'["x" ':= Int]
+          retCont = BranchCont (\_ -> route @'["x" ':= Int] @'["x" ':= Int])
+          conts = insertField (Field @"ret") retCont emptyRecord
+          inner :: Penelope '[] TestEF '["x" ':= Int] '["x" ':= Int]
+          inner = sendPolyF' @"get" @'["x" ':= Int] (100 :: Int) conts
+
+          weakened :: Penelope '[] TestEFExtended '["x" ':= Int] '["x" ':= Int]
+          weakened = weakenEF @TestEFExtended inner
+      case weakened of
+        ScopeRow _ _ _ -> (1 :: Int) `shouldBe` 1
+        _              -> expectationFailure "Expected ScopeRow constructor"
+
+    it "embeds computations into wider higher-order effect row via weakenEH" $ do
+      let m = rowMorph @'["x" ':= Int] @'["x" ':= Int]
+          inner :: Penelope '[] '[] '["x" ':= Int] '["x" ':= Int]
+          inner = route
+
+          weakened :: Penelope TestEHExtended '[] '["x" ':= Int] '["x" ':= Int]
+          weakened = weakenEH @TestEHExtended inner
+      case weakened of
+        ScopeRow _ _ _ -> (1 :: Int) `shouldBe` 1
+        _              -> expectationFailure "Expected ScopeRow constructor"
+
+    it "nests multiple ScopeRow layers cleanly" $ do
+      let inner :: Penelope '[] '[] '["x" ':= Int] '["x" ':= Int]
+          inner = route
+
+          l1 :: Penelope TestEH '[] '["x" ':= Int] '["x" ':= Int]
+          l1 = weakenEH @TestEH inner
+
+          l2 :: Penelope TestEHExtended '[] '["x" ':= Int] '["x" ':= Int]
+          l2 = weakenEH @TestEHExtended l1
+      case l2 of
+        ScopeRow _ _ _ -> (1 :: Int) `shouldBe` 1
+        _              -> expectationFailure "Expected ScopeRow constructor"
