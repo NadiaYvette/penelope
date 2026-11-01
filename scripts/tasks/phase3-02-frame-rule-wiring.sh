@@ -455,9 +455,9 @@ main = hspec $ do
           stage1 :: Penelope '[] '[] '["x" ':= Int] '["x" ':= Int]
           stage1 = LiftPure m1 (\r -> r) (BranchCont (\_ -> route @'["x" ':= Int] @'["x" ':= Int]))
 
-          m2 = rowMorph @'["x" ':= Int, "y" ':= String] @'["x" ':= Int, "y" ':= String]
-          mOut2 = rowMorph @'["z" ':= Bool] @'["z" ':= Bool]
-          stage2 :: Penelope '[] '[] '["x" ':= Int, "y" ':= String] '["z" ':= Bool]
+          m2 = rowMorph @'["x" ':= Int, "y" ':= String] @MyFrame
+          mOut2 = rowMorph @'["z" ':= Bool] @MyFrame
+          stage2 :: Penelope '[] '[] MyFrame '["z" ':= Bool]
           stage2 = LiftPure m2 (\_ -> insertField (Field @"z") True emptyRecord)
                      (BranchCont (\_ -> Route mOut2))
 
