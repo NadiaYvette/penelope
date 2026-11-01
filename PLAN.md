@@ -117,7 +117,7 @@ Ground user-facing facades and standard effect battery:
 
 Certify safety, correctness, and performance:
 
-- [ ] **Milestone 6.1: GHC Core Inspection (`inspection-testing`)**
+- [x] **Milestone 6.1: GHC Core Inspection (`inspection-testing`)**
   - Verify `sendPolyF` and `sendPolyH` compile to literal unboxed `Word#` constants with zero residual dictionaries.
   - Verify `elaborateAll` and `interpretAll` compile to direct `indexSmallArray#` indexing without linear search.
 - [ ] **Milestone 6.2: Institutional Satisfaction & Reduct Property Tests (`QuickCheck`)**
