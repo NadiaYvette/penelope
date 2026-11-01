@@ -293,7 +293,7 @@ main = hspec $ do
 
     it "fuses consecutive routes via fuseRoute" $ do
       let m1 = rowMorph @'["b" ':= Int] @'["a" ':= Int, "b" ':= Int]
-          m2 = rowMorph @'["c" ':= Int] @'["b" ':= Int]
+          m2 = rowMorph @'["b" ':= Int] @'["b" ':= Int]
           fused = fuseRoute m1 m2
       case fused of
         _ -> (1 :: Int) `shouldBe` 1
