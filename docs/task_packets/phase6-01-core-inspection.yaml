@@ -1,0 +1,69 @@
+---
+id: phase6-01-core-inspection
+title: Formally Certify Core Representation Invariants via inspection-testing
+description: |
+  Implement Milestone 6.1 of Phase 6 (Formal Verification, Soundness Certification & Benchmarking
+  per ~/src/penelope/PLAN.md §Phase 6 and docs/notes/IMPLEMENTATION_PLAN.md §Phase 6).
+  Establishes the `inspection` test harness in `packages/penelope-core` leveraging
+  `inspection-testing` to formally certify zero-overhead compilation invariants under GHC 9.14.1.
+
+  Architectural Invariants & Proof Obligations:
+  - Literal Unboxed Word# Tags & Zero Residual Dictionaries:
+    Verify that `sendPolyF` and `sendPolyH` compile to literal unboxed `Word#` constants with zero
+    residual dictionaries (`ConstructorIndex`, `KnownRowMorph`) and pass zero dictionaries in Core
+    (Note [Unpacked Polycategorical Representation] [ref:note-unpacked-representation]).
+  - Branchless Vector Indexing & Zero Linear Cascades:
+    Verify that `elaborateAll` and `interpretAll` compile to direct `indexSmallArray#` indexing
+    without linear search, containing zero `eqWord#` comparisons
+    (Note [Core Architecture] [ref:note-core-architecture]).
+  - Ground Note [Core Architecture] [ref:note-core-architecture] and
+    Note [Unpacked Polycategorical Representation] [ref:note-unpacked-representation].
+
+dependencies:
+  - phase5-03-effect-battery
+
+packages:
+  - penelope-core
+
+executor: script
+model: gemini-3.8-flash-high
+skills:
+  - tricorder
+  - code-navigation
+  - contextful
+max_turns: 12
+run_budget: 600
+max_repair_attempts: 3
+
+steps:
+  - id: configure-inspection-cabal
+    name: Configure test-suite inspection in packages/penelope-core/penelope-core.cabal
+    action: |
+      Add `test-suite inspection` to `packages/penelope-core/penelope-core.cabal` with
+      `inspection-testing >= 0.5`, `-O1`, and required language extensions.
+    duration: "15m"
+
+  - id: implement-inspection-obligations
+    name: Implement inspection obligations in packages/penelope-core/test/Inspection.hs
+    action: |
+      In `packages/penelope-core/test/Inspection.hs`:
+      1. Define test effect rows (`TestEF`, `TestEH`).
+      2. Define inspection targets (`sendTestF`, `sendTestH`, `runElaborateAll`, `elaborateTest`, `runInterpretAll`, `interpretTest`).
+      3. Assert compile-time `inspect` and runtime `$(inspectTest ...)` obligations:
+         - `hasNoType ''ConstructorIndex` and `hasNoType ''KnownRowMorph` on `sendTestF` and `sendTestH`.
+         - `hasNoTypeClasses` on `sendTestF` and `sendTestH`.
+         - `doesNotUse 'eqWord#` on `runElaborateAll`, `elaborateTest`, `runInterpretAll`, and `interpretTest`.
+      4. Ground Note [Core Architecture] [ref:note-core-architecture] and Note [Unpacked Polycategorical Representation] [ref:note-unpacked-representation].
+    duration: "45m"
+
+  - id: verify-gate
+    name: Run verification gate
+    action: |
+      Run `cabal test penelope-core:test:inspection` and execute `sh scripts/tasks/phase6-01-core-inspection-verify.sh`.
+    duration: "10m"
+
+success_criteria:
+  - Package `penelope-core` builds warning-free under `-Wall -Wcompat -Wredundant-constraints -O1`.
+  - All 10 GHC Core inspection obligations compile and pass cleanly (0 failures).
+  - Note [Core Architecture] [ref:note-core-architecture] and Note [Unpacked Polycategorical Representation] [ref:note-unpacked-representation] referenced in source.
+  - Zero forbidden partial functions in `packages/penelope-core/src/`.
