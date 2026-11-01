@@ -128,3 +128,44 @@ main = hspec $ do
       case term of
         OpH tag# _ _ _ _ -> case tag# of _ -> (1 :: Int) `shouldBe` 1
         _                -> expectationFailure "Expected OpH constructor"
+
+  describe "Penelope.Core.Wiring" $ do
+    it "fuses consecutive Route nodes into a single Route" $ do
+      let r1 :: Penelope '[] '[] '["a" ':= Int, "b" ':= Int] '["b" ':= Int]
+          r1 = route
+          r2 :: Penelope '[] '[] '["b" ':= Int] '["b" ':= Int]
+          r2 = route
+          comp = r1 >>> r2
+      case comp of
+        Route _ -> (1 :: Int) `shouldBe` 1
+        _       -> expectationFailure "Expected fused Route constructor"
+
+    it "sequences pure transformations with LiftPure" $ do
+      let m = rowMorph @'["x" ':= Int] @'["x" ':= Int]
+          f r = r
+          step = LiftPure m f (BranchCont (\_ -> route @'["x" ':= Int] @'["x" ':= Int]))
+          comp = step >>> route @'["x" ':= Int] @'["x" ':= Int]
+      case comp of
+        LiftPure _ _ _ -> (1 :: Int) `shouldBe` 1
+        _              -> expectationFailure "Expected LiftPure constructor"
+
+    it "sequences across multi-branch OpF continuations" $ do
+      let retCont = BranchCont (\_ -> route @'["x" ':= Int] @'["x" ':= Int])
+          conts = insertField (Field @"ret") retCont emptyRecord
+          op :: Penelope '[] TestEF '["x" ':= Int] '["x" ':= Int]
+          op = sendPolyF' @"get" @'["x" ':= Int] (100 :: Int) conts
+          comp = op >>> route @'["x" ':= Int] @'["x" ':= Int]
+      case comp of
+        OpF tag# _ _ _ -> case tag# of _ -> (1 :: Int) `shouldBe` 1
+        _              -> expectationFailure "Expected OpF constructor"
+
+    it "elides identity Route when pre-composed with OpF" $ do
+      let idR = route @'["x" ':= Int] @'["x" ':= Int]
+          retCont = BranchCont (\_ -> route @'["x" ':= Int] @'["x" ':= Int])
+          conts = insertField (Field @"ret") retCont emptyRecord
+          op :: Penelope '[] TestEF '["x" ':= Int] '["x" ':= Int]
+          op = sendPolyF' @"get" @'["x" ':= Int] (100 :: Int) conts
+          comp = idR >>> op
+      case comp of
+        OpF _ _ _ _ -> (1 :: Int) `shouldBe` 1
+        _           -> expectationFailure "Expected OpF constructor"
