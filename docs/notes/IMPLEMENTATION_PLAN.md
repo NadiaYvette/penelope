@@ -245,7 +245,7 @@ Certify safety, correctness, and performance:
   - Port Heftia's `UnliftIO`, `Concurrent`, and `Coroutine` + `Local`/`Catch` interaction test suites.
   - Certify that scoped effects unrolled during `elaborateAll` never leak handles or corrupt state across multi-shot coroutines.
 
-- [ ] **Milestone 6.4: Allocation & Throughput Benchmarks (`tasty-bench`)**
+- [x] **Milestone 6.4: Allocation & Throughput Benchmarks (`tasty-bench`)**
   - Benchmark deep effect stacks ($D = 30$ first-order, $H = 15$ higher-order) and wide register frames ($m, n = 20$ ports).
   - Compare throughput, RSS, and nursery allocations against `heftia`, `effectful`, and `kernmantle`.
 

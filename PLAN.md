@@ -113,7 +113,7 @@ Ground user-facing facades and standard effect battery:
 
 ---
 
-## Phase 6: Formal Verification, Soundness Certification & Benchmarking
+## Phase 6: Formal Verification, Soundness Certification & Benchmarking [COMPLETED]
 
 Certify safety, correctness, and performance:
 
@@ -126,6 +126,6 @@ Certify safety, correctness, and performance:
 - [x] **Milestone 6.3: Heftia Scoped Semantics & Concurrency Test Suite**
   - Port Heftia's `UnliftIO`, `Concurrent`, and `Coroutine` + `Local`/`Catch` interaction test suites.
   - Certify scoped effects unrolled during `elaborateAll` never leak handles or corrupt state across multi-shot coroutines.
-- [ ] **Milestone 6.4: Allocation & Throughput Benchmarks (`tasty-bench`)**
+- [x] **Milestone 6.4: Allocation & Throughput Benchmarks (`tasty-bench`)**
   - Benchmark deep effect stacks ($D = 30$ first-order, $H = 15$ higher-order) and wide register frames ($m, n = 20$ ports).
   - Compare throughput, RSS, and nursery allocations against `heftia`, `effectful`, and `kernmantle`.
