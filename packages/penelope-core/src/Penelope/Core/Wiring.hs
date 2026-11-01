@@ -15,7 +15,7 @@
 
 {- |
 Module      : Penelope.Core.Wiring
-Description : Polycategorical wiring combinators, sequential composition, and Coyoneda leaf fusion
+Description : Polycategorical wiring combinators, sequential composition, and frame-rule auto-wiring
 Copyright   : (c) 2026 The Penelope Authors
 License     : EUPL-1.2 OR Apache-2.0
 Maintainer  : nadia.yvette.chambers@ik.me
@@ -23,13 +23,18 @@ Stability   : experimental
 Portability : non-portable (GHC extensions)
 
 Provides polycategorical composition primitives for the Penelope effect system.
-See Note [Unpacked Polycategorical Representation] [ref:note-unpacked-representation]
-and Note [Reified Row Morphisms and Gather-Scatter] [ref:note-row-morph-routing].
+See Note [Unpacked Polycategorical Representation] [ref:note-unpacked-representation],
+Note [Reified Row Morphisms and Gather-Scatter] [ref:note-row-morph-routing],
+and Note [Frame-Rule Automatic Wire Synthesis] [ref:note-frame-rule-wiring].
 -}
 module Penelope.Core.Wiring
   ( -- * Sequential Composition
     seqPenelope
   , (>>>)
+
+    -- * Frame-Rule Automatic Port Wiring
+  , (>&>)
+  , liftFrame
 
     -- * Route Pre-Composition & Peephole Fusion
   , preComposeRoute
@@ -40,6 +45,7 @@ module Penelope.Core.Wiring
 
 import Data.Functor.Identity (Identity (..))
 import Data.Kind (Type)
+import Data.Primitive.PrimArray (sizeofPrimArray)
 import Data.Primitive.SmallArray
   ( indexSmallArray
   , newSmallArray
@@ -59,9 +65,14 @@ import Penelope.Core.Syntax
 import Polytropos (Record, RowOf)
 import Polytropos.Core (Rep (..), RowRep (..))
 import Polytropos.RowMorph
-  ( RowMorph (..)
+  ( FramePlan (..)
+  , FrameWire (..)
+  , RowMorph (..)
   , composeRowMorph
+  , executeFrameScatter
+  , gatherRep
   , indexRowMorph
+  , unsafeMkRowMorph
   )
 import Unsafe.Coerce (unsafeCoerce)
 
@@ -155,6 +166,73 @@ infixr 1 >>>
   -> Penelope eh ef b c
   -> Penelope eh ef a c
 (>>>) = seqPenelope
+
+{- |
+Lifts a local @(opIn -> opOut)@ computation into a wider @(frameIn -> frameOut)@
+register frame by composing 'fpGatherIn' at the root and 'executeFrameScatter' at the leaves.
+
+See Note [Frame-Rule Automatic Wire Synthesis] [ref:note-frame-rule-wiring].
+-}
+liftFrame ::
+  forall (frameIn :: RowOf Type) (opIn :: RowOf Type) (opOut :: RowOf Type) (frameOut :: RowOf Type)
+         (eh :: RowOf PolyHEffect) (ef :: RowOf PolyEffect).
+  FramePlan frameIn opIn opOut frameOut
+  -> Penelope eh ef opIn opOut
+  -> Penelope eh ef frameIn frameOut
+liftFrame plan = go
+  where
+    !baseSz = sizeofPrimArray (unRowMorph (fpBaseScatter plan))
+    !outSz = fpOutSize plan
+
+    liftCont ::
+      forall branchOuts.
+      BranchCont (Penelope eh ef opIn opOut) branchOuts
+      -> BranchCont (Penelope eh ef frameIn frameOut) branchOuts
+    liftCont (BranchCont k) = BranchCont (\branchRec -> go (k branchRec))
+
+    go :: Penelope eh ef opIn opOut -> Penelope eh ef frameIn frameOut
+    go (Route m) =
+      LiftPure
+        (fpGatherIn plan)
+        (\(RowRep inRep) -> RowRep (gatherRep m inRep))
+        (BranchCont $ \(RowRep outRep) ->
+          LiftPure
+            (unsafeMkRowMorph [0 .. baseSz - 1])
+            (\(RowRep frameRep) -> RowRep (executeFrameScatter plan frameRep outRep))
+            (BranchCont $ \_ -> Route (unsafeMkRowMorph [0 .. outSz - 1])))
+    go (LiftPure inMap f cont) =
+      LiftPure (composeRowMorph inMap (fpGatherIn plan)) f (liftCont cont)
+    go (OpF tag# inMap payload conts) =
+      OpF tag# (composeRowMorph inMap (fpGatherIn plan)) payload (rmapFused liftCont conts)
+    go (OpH tag# inMap regions payload conts) =
+      OpH tag# (composeRowMorph inMap (fpGatherIn plan)) regions payload (rmapFused liftCont conts)
+    go (ScopeRow ehM efM inner) =
+      ScopeRow ehM efM (liftFrame plan inner)
+
+{- |
+Frame-Rule Auto-Wiring Composition ('(>&>)'):
+Automatically gathers each stage's required input ports from the live register frame
+and scatters its outputs back into the frame, preserving untouched context ports.
+
+See Note [Frame-Rule Automatic Wire Synthesis] [ref:note-frame-rule-wiring].
+-}
+{-# INLINE (>&>) #-}
+infixr 1 >&>
+(>&>) ::
+  forall (frameIn :: RowOf Type) (ins1 :: RowOf Type) (outs1 :: RowOf Type)
+         (frameMid :: RowOf Type) (ins2 :: RowOf Type) (outs2 :: RowOf Type)
+         (frameOut :: RowOf Type)
+         (eh :: RowOf PolyHEffect) (ef :: RowOf PolyEffect).
+  ( FrameWire frameIn ins1 outs1 frameMid
+  , FrameWire frameMid ins2 outs2 frameOut
+  ) =>
+  Penelope eh ef ins1 outs1
+  -> Penelope eh ef ins2 outs2
+  -> Penelope eh ef frameIn frameOut
+stage1 >&> stage2 =
+  let plan1 = framePlan @frameIn @ins1 @outs1 @frameMid
+      plan2 = framePlan @frameMid @ins2 @outs2 @frameOut
+  in liftFrame plan1 stage1 `seqPenelope` liftFrame plan2 stage2
 
 {- |
 Helper to sequence through regional 'ScopeRow' boundaries to downstream continuations.

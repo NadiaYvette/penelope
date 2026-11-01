@@ -27,6 +27,8 @@ type TestEF = '["get" ':= TestGet, "put" ':= TestPut]
 data TestCatch :: PolyHEffect
 type TestEH = '["catch" ':= TestCatch]
 
+type MyFrame = '["x" ':= Int, "y" ':= String, "z" ':= Bool]
+
 main :: IO ()
 main = hspec $ do
   describe "Penelope.Core.Syntax" $ do
@@ -169,3 +171,20 @@ main = hspec $ do
       case comp of
         OpF _ _ _ _ -> (1 :: Int) `shouldBe` 1
         _           -> expectationFailure "Expected OpF constructor"
+
+    it "composes multi-stage pipelines via frame-rule (>&>)" $ do
+      let m1 = rowMorph @'["x" ':= Int] @'["x" ':= Int]
+          stage1 :: Penelope '[] '[] '["x" ':= Int] '["x" ':= Int]
+          stage1 = LiftPure m1 (\r -> r) (BranchCont (\_ -> route @'["x" ':= Int] @'["x" ':= Int]))
+
+          m2 = rowMorph @'["x" ':= Int, "y" ':= String] @MyFrame
+          mOut2 = rowMorph @'["z" ':= Bool] @MyFrame
+          stage2 :: Penelope '[] '[] MyFrame '["z" ':= Bool]
+          stage2 = LiftPure m2 (\_ -> insertField (Field @"z") True emptyRecord)
+                     (BranchCont (\_ -> Route mOut2))
+
+          pipeline :: Penelope '[] '[] MyFrame MyFrame
+          pipeline = stage1 >&> stage2
+      case pipeline of
+        LiftPure _ _ _ -> (1 :: Int) `shouldBe` 1
+        _              -> expectationFailure "Expected LiftPure at pipeline root"
