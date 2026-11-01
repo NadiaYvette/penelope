@@ -15,7 +15,7 @@
 
 {- |
 Module      : Penelope.Core.Wiring
-Description : Polycategorical wiring combinators, sequential composition, and frame-rule auto-wiring
+Description : Polycategorical wiring combinators, sequential composition, frame-rule auto-wiring, and disjunctive fanout
 Copyright   : (c) 2026 The Penelope Authors
 License     : EUPL-1.2 OR Apache-2.0
 Maintainer  : nadia.yvette.chambers@ik.me
@@ -23,7 +23,8 @@ Stability   : experimental
 Portability : non-portable (GHC extensions)
 
 Provides polycategorical composition primitives for the Penelope effect system.
-See Note [Unpacked Polycategorical Representation] [ref:note-unpacked-representation],
+See Note [Core Architecture] [ref:note-core-architecture],
+Note [Unpacked Polycategorical Representation] [ref:note-unpacked-representation],
 Note [Reified Row Morphisms and Gather-Scatter] [ref:note-row-morph-routing],
 and Note [Frame-Rule Automatic Wire Synthesis] [ref:note-frame-rule-wiring].
 -}
@@ -35,6 +36,9 @@ module Penelope.Core.Wiring
     -- * Frame-Rule Automatic Port Wiring
   , (>&>)
   , liftFrame
+
+    -- * Disjunctive Multi-Exit Fanout
+  , (>?<)
 
     -- * Route Pre-Composition & Peephole Fusion
   , preComposeRoute
@@ -233,6 +237,42 @@ stage1 >&> stage2 =
   let plan1 = framePlan @frameIn @ins1 @outs1 @frameMid
       plan2 = framePlan @frameMid @ins2 @outs2 @frameOut
   in liftFrame plan1 stage1 `seqPenelope` liftFrame plan2 stage2
+
+{- |
+Disjunctive multi-exit fanout combinator.
+Binds an operation's exit channels to a 'Record' of k downstream branch continuations
+in O(1) time without nested binary coproducts ('Either').
+
+See Note [Core Architecture] [ref:note-core-architecture]
+and Note [Unpacked Polycategorical Representation] [ref:note-unpacked-representation].
+-}
+{-# INLINE (>?<) #-}
+infixr 1 >?<
+(>?<) ::
+  forall (eh :: RowOf PolyHEffect) (ef :: RowOf PolyEffect)
+         (ins :: RowOf Type) (mid :: RowOf Type) (outs :: RowOf Type)
+         handlers.
+  Penelope eh ef ins mid
+  -> Record handlers
+  -> Penelope eh ef ins outs
+(>?<) (OpF tag# inMap payload conts) handlers =
+  let RowRep (Rep _ arr) = conts
+  in if sizeofSmallArray arr == 0
+       then OpF tag# inMap payload (unsafeCoerce handlers)
+       else OpF tag# inMap payload
+              (rmapFused (\(BranchCont k) -> BranchCont (\res -> k res >?< handlers)) conts)
+(>?<) (OpH tag# inMap regions payload conts) handlers =
+  let RowRep (Rep _ arr) = conts
+  in if sizeofSmallArray arr == 0
+       then OpH tag# inMap regions payload (unsafeCoerce handlers)
+       else OpH tag# inMap regions payload
+              (rmapFused (\(BranchCont k) -> BranchCont (\res -> k res >?< handlers)) conts)
+(>?<) (LiftPure inMap f cont) handlers =
+  LiftPure inMap f (BranchCont (\res -> runBranchCont cont res >?< handlers))
+(>?<) (ScopeRow ehM efM inner) handlers =
+  ScopeRow ehM efM (inner >?< handlers)
+(>?<) (Route m) _ =
+  Route (unsafeCoerce m)
 
 {- |
 Helper to sequence through regional 'ScopeRow' boundaries to downstream continuations.

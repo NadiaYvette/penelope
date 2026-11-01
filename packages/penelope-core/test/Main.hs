@@ -15,8 +15,9 @@ module Main (main) where
 import Test.Hspec
 import Penelope.Core
 import Polytropos (Field (..), emptyRecord, insertField)
-import Polytropos.Core (Pair (..))
+import Polytropos.Core (Pair (..), Rep (..), RowRep (..))
 import Polytropos.RowMorph (KnownRowMorph (..))
+import Data.Primitive.SmallArray (sizeofSmallArray)
 import GHC.Exts (unsafeCoerce#)
 
 -- Test effect signatures
@@ -188,3 +189,24 @@ main = hspec $ do
       case pipeline of
         LiftPure _ _ _ -> (1 :: Int) `shouldBe` 1
         _              -> expectationFailure "Expected LiftPure at pipeline root"
+
+    it "binds 3-way exit channels in O(1) via (>?<)" $ do
+      let m = rowMorph @'["x" ':= Int] @'["x" ':= Int]
+          op :: Penelope '[] '[] '["x" ':= Int] '["x" ':= Int]
+          op = OpF 0## m (unsafeCoerce# (42 :: Int)) emptyRecord
+
+          branchOk = BranchCont (\_ -> route @'["x" ':= Int] @'["x" ':= Int])
+          branchRetry = BranchCont (\_ -> route @'["x" ':= Int] @'["x" ':= Int])
+          branchAbort = BranchCont (\_ -> route @'["x" ':= Int] @'["x" ':= Int])
+          handlers = insertField (Field @"ok") branchOk
+                   $ insertField (Field @"retry") branchRetry
+                   $ insertField (Field @"abort") branchAbort
+                   $ emptyRecord
+
+          pipeline = op >?< handlers
+      case pipeline of
+        OpF tag# _ _ exits -> do
+          case tag# of _ -> (1 :: Int) `shouldBe` 1
+          let RowRep (Rep _ arr) = exits
+          sizeofSmallArray arr `shouldBe` 3
+        _ -> expectationFailure "Expected OpF with 3-way exit continuations"
