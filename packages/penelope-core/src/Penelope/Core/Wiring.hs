@@ -64,7 +64,7 @@ import Data.Primitive.SmallArray
   , sizeofSmallArray
   , writeSmallArray
   )
-import GHC.Exts (Int (..), Word (..), int2Word#, unsafeCoerce#, word2Int#)
+import GHC.Exts (Int (..), int2Word#, unsafeCoerce#, word2Int#)
 import Penelope.Core.Route (fuseRoute, isIdentityRowMorph)
 import Penelope.Core.Syntax
   ( BranchCont (..)

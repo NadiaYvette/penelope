@@ -74,6 +74,7 @@ test-suite tests
     polytropos-core >= 0.1,
     polytropos-plugin >= 0.1,
     penelope-core >= 0.1,
+    penelope-static
 EOF
 
 mkdir -p packages/penelope-static/src/Penelope/Static packages/penelope-static/test
@@ -131,7 +132,7 @@ import qualified Data.IntSet as IntSet
 import Data.Kind (Type)
 import Data.Primitive.PrimArray (sizeofPrimArray)
 import Data.Primitive.SmallArray (indexSmallArray, newSmallArray, runSmallArray, sizeofSmallArray)
-import GHC.Exts (Int (..), Word (..), unsafeCoerce#, word2Int#)
+import GHC.Exts (Int (..), unsafeCoerce#, word2Int#)
 import Penelope.Core
   ( BranchCont (..)
   , Penelope (..)
