@@ -17,13 +17,15 @@ module Main (main) where
 
 import Control.Arrow (Arrow (..), ArrowChoice (..), (>>>))
 import Control.Category (Category (..))
+import qualified Control.Concurrent as C
+import qualified Control.Exception as E
 import Data.Functor.Identity (Identity (..))
 import Data.IORef (modifyIORef', newIORef, readIORef, writeIORef)
 import Data.Kind (Type)
 import Data.Primitive.SmallArray (indexSmallArray)
 import GHC.Exts (unsafeCoerce#)
 import Penelope.Core.Engine.Elaborate (elaborateAll)
-import Penelope.Core.Engine.Interpret (runPenelopePure)
+import Penelope.Core.Engine.Interpret (interpretAll, runFrameKleisli, runPenelopePure)
 import Penelope.Core.Syntax (BranchCont (..), Penelope (..), PortSig (..), Region (..))
 import Penelope.Effects
 import Polytropos (Field (..), Record, Variant, emptyRecord, injectVariant, insertField)
@@ -33,18 +35,23 @@ import Prelude hiding (id, (.))
 import Test.Hspec
 
 -- Unary Effect GADTs for testing
-data AskEff :: Type -> Type where
-  AskVal :: AskEff Int
+data AskEffTest :: Type -> Type where
+  AskVal :: AskEffTest Int
 
 data MsgEff :: Type -> Type where
   GetMsg :: MsgEff String
   SetMsg :: String -> MsgEff ()
 
-type AskEF = '["ask" ':= UnaryEffect AskEff]
+type AskEF = '["ask" ':= UnaryEffect AskEffTest]
 type MsgEF = '["msg" ':= UnaryEffect MsgEff]
 
 -- Variant type for router tests
 type EventSum = '["click" ':= '["x" ':= Int], "key" ':= '["char" ':= Char]]
+
+-- Multi-effect rows for Heftia interaction tests
+type CoroReaderEF = '["yield" ':= UnaryEffect (YieldEff Int), "reader" ':= UnaryEffect (AskEff Int)]
+type CoroCatchEF = '["yield" ':= UnaryEffect (YieldEff String), "error" ':= UnaryEffect (ThrowEff String)]
+type NonDetReaderEF = '["nondet" ':= UnaryEffect NonDetEff, "reader" ':= UnaryEffect (AskEff Int)]
 
 main :: IO ()
 main = hspec $ do
@@ -109,7 +116,7 @@ main = hspec $ do
             v <- send @"ask" AskVal
             pure (v * 2)
 
-          askHandler :: EffHandler Identity AskEff
+          askHandler :: EffHandler Identity AskEffTest
           askHandler = mkEffHandler $ \case
             AskVal -> Identity (21 :: Int)
 
@@ -209,7 +216,7 @@ main = hspec $ do
             )
             (BranchCont (\_ -> Route (unsafeMkRowMorph [0])))
 
-          bodyPipe :: Penelope '[] '[] '["x" ':= Int] '["x" ':= Int]
+      let bodyPipe :: Penelope '[] '[] '["x" ':= Int] '["x" ':= Int]
           bodyPipe = LiftPure (unsafeMkRowMorph [0])
             (\r ->
               let !(Identity x) = indexSmallArray (let RowRep (Rep _ sArr) = r in sArr) 0
@@ -218,20 +225,20 @@ main = hspec $ do
             )
             (BranchCont (\_ -> Route (unsafeMkRowMorph [0])))
 
-          regs = insertField (Field @"cond") (Region @'[] @'[] @('PortSig '["x" ':= Int] '["cond" ':= Bool]) condPipe)
+      let regs = insertField (Field @"cond") (Region @'[] @'[] @('PortSig '["x" ':= Int] '["cond" ':= Bool]) condPipe)
                $ insertField (Field @"body") (Region @'[] @'[] @('PortSig '["x" ':= Int] '["x" ':= Int]) bodyPipe)
                $ emptyRecord
 
-          retCont = BranchCont (\_ -> Route (unsafeMkRowMorph [0]))
-          exits = insertField (Field @"exit") retCont emptyRecord
+      let retCont = BranchCont (\_ -> Route (unsafeMkRowMorph [0]))
+      let exits = insertField (Field @"exit") retCont emptyRecord
 
-          whileTerm :: Penelope '["while" ':= While] '[] '["x" ':= Int] '["x" ':= Int]
+      let whileTerm :: Penelope '["while" ':= While] '[] '["x" ':= Int] '["x" ':= Int]
           whileTerm = OpH 0## (unsafeMkRowMorph [0]) regs (unsafeCoerce# ()) exits
 
-          elabs = insertField (Field @"while") whileElaborator emptyRecord
+      let elabs = insertField (Field @"while") whileElaborator emptyRecord
           elaborated = elaborateAll elabs whileTerm
 
-          inFrame = insertField (Field @"x") (0 :: Int) emptyRecord
+      let inFrame = insertField (Field @"x") (0 :: Int) emptyRecord
           outFrame = runPenelopePure elaborated inFrame
           !(Identity finalX) = indexSmallArray (let RowRep (Rep _ sArr) = outFrame in sArr) 0
 
@@ -258,6 +265,18 @@ main = hspec $ do
           (yielded, res) = runGenerator gen
       yielded `shouldBe` [10, 20, 30]
       res `shouldBe` "finished"
+
+    it "runs non-deterministic branching exploration via runNonDet" $ do
+      let prog :: Eff '[] '["nondet" ':= UnaryEffect NonDetEff] Int
+          prog = do
+            b1 <- branch @"nondet"
+            b2 <- branch @"nondet"
+            case (b1, b2) of
+              (True, True)   -> pure 10
+              (True, False)  -> pure 20
+              (False, True)  -> pure 30
+              (False, False) -> emptyNonDet @"nondet"
+      runNonDet prog `shouldBe` [10, 20, 30]
 
   describe "Penelope.Effects.UnliftIO (Scoped Resource Safety & Provider)" $ do
     it "guarantees Bracket resource cleanup on success exit" $ do
@@ -301,3 +320,252 @@ main = hspec $ do
             env <- askProvider @"provider"
             pure ("env:" <> env)
       runProviderPure "production" prog `shouldBe` "env:production"
+
+  describe "Penelope.Effects.Scoped (Reader / Local)" $ do
+    it "reads lexical environment purely via askReader and runReaderPure" $ do
+      let prog :: Eff '[] '["reader" ':= UnaryEffect (AskEff Int)] Int
+          prog = do
+            v <- askReader
+            pure (v * 2)
+      runReaderPure (21 :: Int) prog `shouldBe` 42
+
+    it "modifies environment in nested local blocks and restores state cleanly" $ do
+      let prog :: Eff '[] '["reader" ':= UnaryEffect (AskEff Int)] (Int, Int, Int)
+          prog = do
+            v0 <- askReader
+            v1 <- local @Int (+ 10) $ do
+              inner1 <- askReader
+              inner2 <- local @Int (* 2) askReader
+              pure (inner1 + inner2)
+            v2 <- askReader
+            pure (v0, v1, v2)
+      -- With initial 5:
+      -- v0 = 5
+      -- inner1 = 15, inner2 = (5 + 10) * 2 = 30 -> v1 = 45
+      -- v2 = 5
+      runReaderPure (5 :: Int) prog `shouldBe` (5, 45, 5)
+
+    it "unrolls higher-order Local effect via localElaborator and elaborateAll" $ do
+      let bodyPipe :: Penelope '[] '["reader" ':= UnaryEffect (AskEff Int)] '[] '["val" ':= Int]
+          bodyPipe = unEff $ do
+            x <- askReader
+            pure (x + 100)
+
+      let regs = insertField (Field @"body") (Region @'[] @'["reader" ':= UnaryEffect (AskEff Int)] @('PortSig '[] '["val" ':= Int]) bodyPipe) emptyRecord
+      let retCont = BranchCont (\_outF -> Route (unsafeMkRowMorph [0]))
+      let exits = insertField (Field @"ret") retCont emptyRecord
+
+      let localOpH :: Penelope '["local" ':= Local Int] '["reader" ':= UnaryEffect (AskEff Int)] '[] '["val" ':= Int]
+          localOpH = OpH 0## (unsafeMkRowMorph []) regs (unsafeCoerce# ((* 2) :: Int -> Int)) exits
+
+      let elabs = insertField (Field @"local") (localElaborator @"reader") emptyRecord
+      let elaborated = elaborateAll elabs localOpH
+
+      let handlers = insertField (Field @"reader") (readerHandler (10 :: Int)) emptyRecord
+      let Identity outFrame = runFrameKleisli (interpretAll handlers elaborated) emptyRecord
+      let !(Identity resVal) = indexSmallArray (let RowRep (Rep _ arrRep) = outFrame in arrRep) 0
+      -- Initial 10 * 2 = 20, plus 100 = 120
+      (unsafeCoerce# resVal :: Int) `shouldBe` 120
+
+  describe "Penelope.Effects.Scoped (Error / Catch)" $ do
+    it "evaluates successful computations to Right with runErrorPure" $ do
+      let prog :: Eff '[] '["error" ':= UnaryEffect (ThrowEff String)] Int
+          prog = pure 42
+      runErrorPure prog `shouldBe` Right 42
+
+    it "aborts on throw with Left error message" $ do
+      let prog :: Eff '[] '["error" ':= UnaryEffect (ThrowEff String)] Int
+          prog = do
+            _ <- pure (10 :: Int)
+            throw ("aborted-computation" :: String)
+      runErrorPure prog `shouldBe` Left "aborted-computation"
+
+    it "catches and recovers from errors via catchError" $ do
+      let prog :: Eff '[] '["error" ':= UnaryEffect (ThrowEff String)] String
+          prog = do
+            catchError
+              (do
+                _ <- pure (1 :: Int)
+                throw ("recoverable-error" :: String)
+              )
+              (\e -> pure ("caught:" <> e))
+      runErrorPure prog `shouldBe` Right "caught:recoverable-error"
+
+    it "unrolls higher-order Catch effect via catchElaborator and elaborateAll" $ do
+      let bodyPipe :: Penelope '[] '["error" ':= UnaryEffect (ThrowEff String)] '[] '["val" ':= String]
+          bodyPipe = unEff $ do
+            _ <- throw ("scoped-error-thrown" :: String)
+            pure "unreachable"
+
+      let handlerPipe :: Penelope '[] '["error" ':= UnaryEffect (ThrowEff String)] '[] '["val" ':= String]
+          handlerPipe = unEff (pure "intercepted-by-elaborator")
+
+      let regs = insertField (Field @"body") (Region @'[] @'["error" ':= UnaryEffect (ThrowEff String)] @('PortSig '[] '["val" ':= String]) bodyPipe)
+               $ insertField (Field @"handler") (Region @'[] @'["error" ':= UnaryEffect (ThrowEff String)] @('PortSig '[] '["val" ':= String]) handlerPipe)
+               $ emptyRecord
+      let retCont = BranchCont (\_outF -> Route (unsafeMkRowMorph [0]))
+      let exits = insertField (Field @"ret") retCont emptyRecord
+
+      let catchOpH :: Penelope '["catch" ':= Catch String] '["error" ':= UnaryEffect (ThrowEff String)] '[] '["val" ':= String]
+          catchOpH = OpH 0## (unsafeMkRowMorph []) regs (unsafeCoerce# ()) exits
+
+      let elabs = insertField (Field @"catch") (catchElaborator @"error") emptyRecord
+      let elaborated = elaborateAll elabs catchOpH
+
+      let handlers = insertField (Field @"error") errorHandler emptyRecord
+      let res = runFrameKleisli (interpretAll handlers elaborated) emptyRecord
+      case res of
+        Right outFrame -> do
+          let !(Identity resVal) = indexSmallArray (let RowRep (Rep _ arrRep) = outFrame in arrRep) 0
+          (unsafeCoerce# resVal :: String) `shouldBe` "intercepted-by-elaborator"
+        Left e ->
+          expectationFailure ("Unexpected unhandled error: " <> show e)
+
+  describe "Penelope.Effects.Concurrent (Async & Task Isolation)" $ do
+    it "forks background IO task via forkEff" $ do
+      mvar <- C.newEmptyMVar
+      let prog :: Eff '[] '["concurrent" ':= UnaryEffect ConcurrentEff] ()
+          prog = forkEff @"concurrent" (C.putMVar mvar ("worker-done" :: String))
+      runConcurrentIO prog
+      res <- C.takeMVar mvar
+      res `shouldBe` "worker-done"
+
+    it "runs asynchronous tasks concurrently and awaits results via waitEff" $ do
+      let task1 = do
+            C.threadDelay 2000
+            pure (10 :: Int)
+          task2 = do
+            C.threadDelay 1000
+            pure (20 :: Int)
+
+      let prog :: Eff '[] '["concurrent" ':= UnaryEffect ConcurrentEff] (Int, Int)
+          prog = do
+            h1 <- async task1
+            h2 <- async task2
+            r1 <- wait h1
+            r2 <- wait h2
+            pure (r1, r2)
+
+      res <- runConcurrentIO prog
+      res `shouldBe` (10, 20)
+
+    it "propagates exceptions from failed asynchronous tasks safely" $ do
+      let failingTask = do
+            E.throwIO (userError "async-failure") :: IO Int
+
+      let prog :: Eff '[] '["concurrent" ':= UnaryEffect ConcurrentEff] Int
+          prog = do
+            h <- async failingTask
+            wait h
+
+      runConcurrentIO prog `shouldThrow` anyException
+
+  describe "Heftia Scoped Semantics & Multi-Shot Interaction" $ do
+    it "preserves local reader environment across coroutine yield suspensions" $ do
+      ref <- newIORef ([] :: [Int])
+      let prog :: Eff '[] CoroReaderEF ()
+          prog = do
+            yield @"yield" (1 :: Int)
+            local @Int (+ 100) $ do
+              yield @"yield" (2 :: Int)
+              x <- ask @"reader"
+              yield @"yield" x
+            yield @"yield" (3 :: Int)
+            y <- ask @"reader"
+            yield @"yield" y
+
+      let yHandler :: EffHandler IO (YieldEff Int)
+          yHandler = mkEffHandler $ \(Yield val) ->
+            modifyIORef' ref (val :)
+
+          rHandler :: EffHandler IO (AskEff Int)
+          rHandler = readerHandler (10 :: Int)
+
+          handlers = insertField (Field @"yield") yHandler
+                   $ insertField (Field @"reader") rHandler
+                   $ emptyRecord
+
+      _ <- runEffM handlers prog
+      yielded <- readIORef ref
+      reverse yielded `shouldBe` [1, 2, 110, 3, 10]
+
+    it "catches errors thrown during coroutine execution and resumes yielding downstream" $ do
+      ref <- newIORef ([] :: [String])
+      let prog :: Eff '[] CoroCatchEF ()
+          prog = do
+            yield @"yield" ("start" :: String)
+            catchError
+              (do
+                yield @"yield" ("in-try" :: String)
+                throwError @"error" ("simulated-failure" :: String)
+                yield @"yield" ("unreachable" :: String)
+              )
+              (\e -> do
+                yield @"yield" ("recovered:" <> e :: String)
+              )
+            yield @"yield" ("after-catch" :: String)
+
+      let yHandler :: EffHandler IO (YieldEff String)
+          yHandler = mkEffHandler $ \(Yield val) ->
+            modifyIORef' ref (val :)
+
+          eHandler :: EffHandler IO (ThrowEff String)
+          eHandler = mkEffHandler $ \(Throw e) ->
+            fail ("Unhandled throw caught by carrier: " <> e)
+
+          handlers = insertField (Field @"yield") yHandler
+                   $ insertField (Field @"error") eHandler
+                   $ emptyRecord
+
+      _ <- runEffM handlers prog
+      yielded <- readIORef ref
+      reverse yielded `shouldBe` ["start", "in-try", "recovered:simulated-failure", "after-catch"]
+
+    it "maintains complete environment isolation across multi-shot non-deterministic branches" $ do
+      let prog :: Eff '[] NonDetReaderEF Int
+          prog = do
+            b <- branch @"nondet"
+            if b
+              then local @Int (+ 10) (ask @"reader")
+              else local @Int (+ 20) (ask @"reader")
+
+      let ndHandler :: EffHandler [] NonDetEff
+          ndHandler = nonDetHandler
+
+          rHandler :: EffHandler [] (AskEff Int)
+          rHandler = readerHandler (5 :: Int)
+
+          handlers = insertField (Field @"nondet") ndHandler
+                   $ insertField (Field @"reader") rHandler
+                   $ emptyRecord
+
+      let results = runEffM handlers prog
+      results `shouldBe` [15, 25]
+
+    it "guarantees balanced resource acquisition and cleanup across multiple concurrent branches" $ do
+      ref <- newIORef ([] :: [String])
+      let acquire name = do
+            modifyIORef' ref ((name <> "-acq") :)
+            pure name
+          release name = do
+            modifyIORef' ref ((name <> "-rel") :)
+
+      let task1 = bracketIO (acquire "worker1") release (\n -> pure (n <> "-done"))
+          task2 = bracketIO (acquire "worker2") release (\n -> pure (n <> "-done"))
+
+      let prog :: Eff '[] '["concurrent" ':= UnaryEffect ConcurrentEff] (String, String)
+          prog = do
+            h1 <- async task1
+            h2 <- async task2
+            r1 <- wait h1
+            r2 <- wait h2
+            pure (r1, r2)
+
+      res <- runConcurrentIO prog
+      res `shouldBe` ("worker1-done", "worker2-done")
+
+      logEntries <- readIORef ref
+      logEntries `shouldContain` ["worker1-acq"]
+      logEntries `shouldContain` ["worker1-rel"]
+      logEntries `shouldContain` ["worker2-acq"]
+      logEntries `shouldContain` ["worker2-rel"]

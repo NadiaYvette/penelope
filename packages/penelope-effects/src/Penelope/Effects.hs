@@ -3,7 +3,7 @@
 --
 -- This module provides foundational data structures and domain operations for 'penelope-effects',
 -- re-exporting the Heftia unary monadic facade ('Eff'), the Kernmantle binary arrow facade ('Rope'),
--- and the standard effect battery ('Control', 'Coroutine', 'UnliftIO').
+-- and the standard effect battery ('Control', 'Coroutine', 'UnliftIO', 'Scoped', 'Concurrent').
 --
 -- = Architectural Context
 --
@@ -37,12 +37,16 @@ module Penelope.Effects
   , module Penelope.Effects.Control
   , module Penelope.Effects.Coroutine
   , module Penelope.Effects.UnliftIO
+  , module Penelope.Effects.Scoped
+  , module Penelope.Effects.Concurrent
   ) where
 
 import Data.Text (Text)
 import Penelope.Effects.Binary
+import Penelope.Effects.Concurrent
 import Penelope.Effects.Control
 import Penelope.Effects.Coroutine
+import Penelope.Effects.Scoped
 import Penelope.Effects.Unary
 import Penelope.Effects.UnliftIO
 

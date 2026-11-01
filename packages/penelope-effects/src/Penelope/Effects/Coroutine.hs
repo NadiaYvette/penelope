@@ -50,6 +50,8 @@ module Penelope.Effects.Coroutine
   , NonDetEff (..)
   , branch
   , emptyNonDet
+  , nonDetHandler
+  , runNonDet
   ) where
 
 import Data.IORef (modifyIORef', newIORef, readIORef)
@@ -241,3 +243,29 @@ emptyNonDet ::
   ConstructorIndex l ef =>
   Eff eh ef a
 emptyNonDet = send @l Empty
+
+{- |
+Handler for 'NonDetEff' into the list monad '[]'.
+
+See Note [Core Architecture] [ref:note-core-architecture] and
+Note [Zero-Cost Surface Specializations] [ref:note-surface-facades].
+-}
+{-# INLINE nonDetHandler #-}
+nonDetHandler :: EffHandler [] NonDetEff
+nonDetHandler = mkEffHandler $ \case
+  Branch -> [True, False]
+  Empty  -> []
+
+{- |
+Execute a non-deterministic 'Eff' computation, returning all valid execution paths.
+
+See Note [Core Architecture] [ref:note-core-architecture] and
+Note [Zero-Cost Surface Specializations] [ref:note-surface-facades].
+-}
+{-# INLINE runNonDet #-}
+runNonDet ::
+  Eff '[] '["nondet" ':= UnaryEffect NonDetEff] a
+  -> [a]
+runNonDet prog =
+  let handlers = insertField (Field @"nondet") nonDetHandler emptyRecord
+  in runEffM handlers prog
