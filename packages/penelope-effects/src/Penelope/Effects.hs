@@ -1,12 +1,14 @@
 -- | Module: Penelope.Effects
--- Description: Core implementation module for penelope-effects
+-- Description: Core implementation and facade re-exports for penelope-effects
 --
--- This module provides foundational data structures and domain operations for 'penelope-effects'.
+-- This module provides foundational data structures and domain operations for 'penelope-effects',
+-- re-exporting the Heftia unary monadic facade ('Eff').
 --
 -- = Architectural Context
 --
--- Per Note [Core Architecture] [ref:note-core-architecture], this module provides
--- the primary domain interface within the 'penelope' workspace.
+-- Per Note [Core Architecture] [ref:note-core-architecture] and
+-- Note [Zero-Cost Surface Specializations] [ref:note-surface-facades], this module provides
+-- the primary user-facing domain interface within the 'penelope' workspace.
 --
 -- == Invariants & Guarantees
 --
@@ -25,9 +27,13 @@ module Penelope.Effects
   , defaultEntity
     -- * Operations
   , renderEntity
+
+    -- * Surface Facades
+  , module Penelope.Effects.Unary
   ) where
 
 import Data.Text (Text)
+import Penelope.Effects.Unary
 
 -- | Represents a core domain entity within the 'penelope-effects' package.
 --
