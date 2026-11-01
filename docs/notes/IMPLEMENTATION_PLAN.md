@@ -237,7 +237,7 @@ Certify safety, correctness, and performance:
   - Verify `sendPolyF` and `sendPolyH` compile to literal unboxed `Word#` constants with zero residual dictionaries.
   - Verify `elaborateAll` and `interpretAll` compile to direct `indexSmallArray#` indexing without linear search.
 
-- [ ] **Milestone 6.2: Institutional Satisfaction & Reduct Property Tests (`QuickCheck`)**
+- [x] **Milestone 6.2: Institutional Satisfaction & Reduct Property Tests (`QuickCheck`)**
   - Property-test the Reduct-Evaluation Identity: $\text{eval}_J(\mathcal{H}, \sigma_*(P)) \equiv \text{eval}_I(\sigma^*(\mathcal{H}), P)$ across randomized row permutations.
   - Property-test Static-Elaboration Commutativity: verify metadata extracted by `StaticPenelope` is identical before and after `elaborateAll`.
 

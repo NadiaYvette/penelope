@@ -39,6 +39,13 @@ SPDX-License-Identifier: EUPL-1.2 OR Apache-2.0
       - `elaborateAll` and `interpretAll` dispatch via branchless `indexSmallArray#` vector reads without linear search cascades (`doesNotUse 'eqWord#`).
     - Fast-forward merged via `yamaarashi-exec` task packet `phase6-01-core-inspection` (commit `55638fc`).
 
+ 6. **Phase 6 Milestone 6.2 (Institutional Satisfaction & Reduct Property Tests) Complete & Merged:**
+    - Established `properties` test suite in `packages/penelope-static` running 500 QuickCheck randomized trials.
+    - Formally certified Goguen-Burstall satisfaction condition across randomized row embeddings and permutations: $\text{eval}_J(\mathcal{H}, \sigma_*(P)) \equiv \text{eval}_I(\sigma^*(\mathcal{H}), P)$.
+    - Certified Functorial Reduct Transitivity: $(\sigma_2 \circ \sigma_1)^*(\mathcal{H}) \equiv \sigma_1^*(\sigma_2^*(\mathcal{H}))$.
+    - Certified Static-Elaboration Commutativity and structural port liveness invariance under `elaborateAll`.
+    - Fast-forward merged via `yamaarashi-exec` task packet `phase6-02-reduct-properties` (commit `86a9ef2`).
+
 ---
 
 ## Active Frontier
@@ -47,7 +54,7 @@ SPDX-License-Identifier: EUPL-1.2 OR Apache-2.0
   - [x] **Milestone 6.1: GHC Core Inspection (`inspection-testing`)**
     - Verify `sendPolyF` and `sendPolyH` compile to literal unboxed `Word#` constants with zero residual dictionaries.
     - Verify `elaborateAll` and `interpretAll` compile to direct `indexSmallArray#` primitive reads without linear branch cascades.
-  - [ ] **Milestone 6.2: Institutional Satisfaction & Reduct Property Tests (`QuickCheck`)**
+  - [x] **Milestone 6.2: Institutional Satisfaction & Reduct Property Tests (`QuickCheck`)**
     - Property-test Reduct-Evaluation Identity: $\text{eval}_J(\mathcal{H}, \sigma_*(P)) \equiv \text{eval}_I(\sigma^*(\mathcal{H}), P)$ across randomized row permutations.
     - Property-test Static-Elaboration Commutativity: verify metadata extracted by `StaticPenelope` is identical before and after `elaborateAll`.
   - [ ] **Milestone 6.3: Heftia Scoped Semantics & Concurrency Test Suite**
