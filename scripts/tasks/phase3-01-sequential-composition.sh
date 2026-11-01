@@ -453,6 +453,7 @@ main = hspec $ do
     it "sequences across multi-branch OpF continuations" $ do
       let retCont = BranchCont (\_ -> route @'["x" ':= Int] @'["x" ':= Int])
           conts = insertField (Field @"ret") retCont emptyRecord
+          op :: Penelope '[] TestEF '["x" ':= Int] '["x" ':= Int]
           op = sendPolyF' @"get" @'["x" ':= Int] (100 :: Int) conts
           comp = op >>> route @'["x" ':= Int] @'["x" ':= Int]
       case comp of
@@ -463,6 +464,7 @@ main = hspec $ do
       let idR = route @'["x" ':= Int] @'["x" ':= Int]
           retCont = BranchCont (\_ -> route @'["x" ':= Int] @'["x" ':= Int])
           conts = insertField (Field @"ret") retCont emptyRecord
+          op :: Penelope '[] TestEF '["x" ':= Int] '["x" ':= Int]
           op = sendPolyF' @"get" @'["x" ':= Int] (100 :: Int) conts
           comp = idR >>> op
       case comp of
