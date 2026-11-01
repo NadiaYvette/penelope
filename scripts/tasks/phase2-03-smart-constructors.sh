@@ -79,6 +79,7 @@ EOF
 
 # 2. Create packages/penelope-core/src/Penelope/Core/Send.hs
 cat <<'EOF' > packages/penelope-core/src/Penelope/Core/Send.hs
+{-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
