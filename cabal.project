@@ -1,5 +1,7 @@
 packages:
   packages/*/
+  /home/nyc/src/polytropos/packages/polytropos-core
+  /home/nyc/src/polytropos/packages/polytropos-plugin
 
 with-compiler: ghc-9.14.1
 write-ghc-environment-files: always
