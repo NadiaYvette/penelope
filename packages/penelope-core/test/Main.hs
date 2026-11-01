@@ -19,6 +19,14 @@ import Polytropos.Core (Pair (..))
 import Polytropos.RowMorph (KnownRowMorph (..))
 import GHC.Exts (unsafeCoerce#)
 
+-- Test effect signatures
+data TestGet :: PolyEffect
+data TestPut :: PolyEffect
+type TestEF = '["get" ':= TestGet, "put" ':= TestPut]
+
+data TestCatch :: PolyHEffect
+type TestEH = '["catch" ':= TestCatch]
+
 main :: IO ()
 main = hspec $ do
   describe "Penelope.Core.Syntax" $ do
@@ -97,3 +105,26 @@ main = hspec $ do
           fused = fuseRoute m1 m2
       case fused of
         _ -> (1 :: Int) `shouldBe` 1
+
+  describe "Penelope.Core.Send" $ do
+    it "constructs sendPolyF with ConstructorIndex tag resolution" $ do
+      let retCont = BranchCont (\_ -> route @'["x" ':= Int] @'["x" ':= Int])
+          conts = insertField (Field @"ret") retCont emptyRecord
+          term :: Penelope '[] TestEF '["x" ':= Int] '["x" ':= Int]
+          term = sendPolyF' @"get" @'["x" ':= Int] (100 :: Int) conts
+      case term of
+        OpF tag# _ _ _ -> case tag# of _ -> (1 :: Int) `shouldBe` 1
+        _              -> expectationFailure "Expected OpF constructor"
+
+    it "constructs sendPolyH with sub-regions and ConstructorIndex tag resolution" $ do
+      let retCont = BranchCont (\_ -> route @'["x" ':= Int] @'["x" ':= Int])
+          conts = insertField (Field @"ret") retCont emptyRecord
+          subProg :: Penelope TestEH '[] '["x" ':= Int] '["x" ':= Int]
+          subProg = route
+          reg = Region @TestEH @'[] @('PortSig '["x" ':= Int] '["x" ':= Int]) subProg
+          regions = insertField (Field @"body") reg emptyRecord
+          term :: Penelope TestEH '[] '["x" ':= Int] '["x" ':= Int]
+          term = sendPolyH' @"catch" @'["x" ':= Int] regions () conts
+      case term of
+        OpH tag# _ _ _ _ -> case tag# of _ -> (1 :: Int) `shouldBe` 1
+        _                -> expectationFailure "Expected OpH constructor"

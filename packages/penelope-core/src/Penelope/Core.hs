@@ -13,7 +13,9 @@ See Note [Core Architecture] [ref:note-core-architecture].
 module Penelope.Core
   ( module Penelope.Core.Syntax
   , module Penelope.Core.Route
+  , module Penelope.Core.Send
   ) where
 
 import Penelope.Core.Syntax
 import Penelope.Core.Route
+import Penelope.Core.Send
