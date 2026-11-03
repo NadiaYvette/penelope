@@ -1,6 +1,11 @@
 -- cabal.project.local.example — Local developer configuration template
 -- Copy to cabal.project.local for machine-specific overrides (git-ignored)
 
+-- Optional: Link against local sibling polytropos checkout
+-- packages:
+--   ../polytropos/packages/polytropos-core
+--   ../polytropos/packages/polytropos-plugin
+
 -- Optional: Override default compiler
 -- with-compiler: ghc-9.14.1
 
