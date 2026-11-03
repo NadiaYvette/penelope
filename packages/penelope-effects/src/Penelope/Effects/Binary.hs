@@ -24,7 +24,7 @@ Maintainer  : nadia.yvette.chambers@ik.me
 Stability   : experimental
 Portability : non-portable (GHC extensions)
 
-Provides a binary arrow interface ('Rope') and static jump-table routing ('deriveRouter')
+Provides a binary arrow interface ('t:Rope') and static jump-table routing ('deriveRouter')
 over Penelope's polycategorical core.
 
 See Note [Zero-Cost Surface Specializations] [ref:note-surface-facades].
@@ -263,7 +263,7 @@ deriveRouter handlers = Rope $
     )
 
 {- |
-Execute a pure, closed 'Rope' arrow to its final output value.
+Execute a pure, closed 't:Rope' arrow to its final output value.
 
 See Note [Zero-Cost Surface Specializations] [ref:note-surface-facades].
 -}
@@ -276,7 +276,7 @@ runRopePure (Rope p) a =
   in unsafeCoerce# bVal
 
 {- |
-Execute an effectful 'Rope' arrow into a target 'Monad' using a handler vector.
+Execute an effectful 't:Rope' arrow into a target 'Monad' using a handler vector.
 
 See Note [Zero-Cost Surface Specializations] [ref:note-surface-facades].
 -}

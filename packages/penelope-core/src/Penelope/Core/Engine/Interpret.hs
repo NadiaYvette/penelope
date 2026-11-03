@@ -127,7 +127,7 @@ type Handlers ef m = Record (MapRow (Handler '[] m) ef)
 
 {- |
 Phase 2 bulk vector-dispatched algebraic interpretation over first-order operations.
-Dispatches each 'OpF' constructor tag via branchless \(O(1)\) 'indexSmallArray#' read
+Dispatches each 'OpF' constructor tag via branchless \(O(1)\) @indexSmallArray#@ read
 into the handler record, with zero linear search cascades.
 
 Contravariant handler reduct gathering via 'gatherRecord' adapts outer handlers to inner

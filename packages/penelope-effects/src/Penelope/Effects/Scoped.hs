@@ -24,7 +24,7 @@ Maintainer  : nadia.yvette.chambers@ik.me
 Stability   : experimental
 Portability : non-portable (GHC extensions)
 
-Provides scoped effect semantics ('Reader'/'Local' and 'Error'/'Catch') guaranteed never
+Provides scoped effect semantics (@Reader@/'Local' and @Error@/'Catch') guaranteed never
 to leak environment handles or clobber lexical scopes across delimited coroutine
 suspensions or non-deterministic branching resumptions.
 
@@ -171,7 +171,7 @@ throw = throwError @"error"
 
 {- |
 Walk the 'Penelope' polycategorical graph, transforming every 'Ask' node targeted
-by 'targetTag#' so its return continuation receives the locally modified environment.
+by @targetTag#@ so its return continuation receives the locally modified environment.
 
 See Note [Two-Phase Weaving and Unweaving] [ref:note-two-phase-engine].
 -}
@@ -256,7 +256,7 @@ local = localAt @"reader"
 
 {- |
 Walk the 'Penelope' polycategorical graph, intercepting every 'Throw' node targeted
-by 'targetTag#' and substituting the handler continuation.
+by @targetTag#@ and substituting the handler continuation.
 
 See Note [Two-Phase Weaving and Unweaving] [ref:note-two-phase-engine].
 -}
@@ -329,7 +329,7 @@ catchError ::
 catchError = catchErrorAt @"error"
 
 {- |
-Elaborator for higher-order 'Local' effect unrolling into pure first-order 'ef' operations.
+Elaborator for higher-order 'Local' effect unrolling into pure first-order @ef@ operations.
 
 See Note [Two-Phase Weaving and Unweaving] [ref:note-two-phase-engine].
 -}
@@ -349,7 +349,7 @@ localElaborator = Elaborator $ \inMap regs opAny kConts ->
   in preComposeRoute inMap (unsafeCoerce# (transformedBody `seqPenelope` retK (unsafeCoerce# emptyRecord)))
 
 {- |
-Elaborator for higher-order 'Catch' effect unrolling into pure first-order 'ef' operations.
+Elaborator for higher-order 'Catch' effect unrolling into pure first-order @ef@ operations.
 
 See Note [Two-Phase Weaving and Unweaving] [ref:note-two-phase-engine].
 -}
@@ -385,7 +385,7 @@ readerHandler env = mkEffHandler $ \case
   Ask -> pure env
 
 {- |
-Execute a pure 'Eff' computation supplying an environment @r@.
+Execute a pure 't:Eff' computation supplying an environment @r@.
 
 See Note [Core Architecture] [ref:note-core-architecture] and
 Note [Zero-Cost Surface Specializations] [ref:note-surface-facades].
@@ -414,7 +414,7 @@ errorHandler ::
 errorHandler = mkEffHandler $ \(Throw err) -> Left err
 
 {- |
-Execute a pure 'Eff' computation catching errors into 'Either e a'.
+Execute a pure 't:Eff' computation catching errors into 'Either e a'.
 
 See Note [Core Architecture] [ref:note-core-architecture] and
 Note [Zero-Cost Surface Specializations] [ref:note-surface-facades].

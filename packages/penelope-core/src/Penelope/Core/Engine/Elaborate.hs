@@ -62,7 +62,7 @@ type family MapRow (f :: k -> Type) (r :: RowOf k) :: RowOf Type where
 type Elaborators ef eh = Record (MapRow (Elaborator '[] ef) eh)
 
 {- |
-An 'Elaborator' translates a higher-order \((m, n, k, r)\)-ary scoped operation @h@
+An 't:Elaborator' translates a higher-order \((m, n, k, r)\)-ary scoped operation @h@
 into a pure first-order 'Penelope' computation.
 
 Notice that:
@@ -92,7 +92,7 @@ newtype Elaborator
 {- |
 Elaborates all higher-order scoped effects @eh@ into pure first-order effects @ef@
 in a single bottom-up pass over the syntax tree.
-Dispatch at each 'OpH' node is a branchless \(O(1)\) 'indexSmallArray#' read into the
+Dispatch at each 'OpH' node is a branchless \(O(1)\) @indexSmallArray#@ read into the
 Polytropos 'Record' of elaborators.
 
 Contravariant reduct gathering via 'gatherRecord' adapts outer elaborators to inner

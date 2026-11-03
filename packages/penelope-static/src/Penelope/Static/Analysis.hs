@@ -163,7 +163,7 @@ instance Semigroup LivenessReport where
 instance Monoid LivenessReport where
   mempty = LivenessReport IntSet.empty IntSet.empty IntSet.empty 0 1
 
--- | Extract the set of frame slot indices read by a 'RowMorph'.
+-- | Extract the set of frame slot indices read by a 't:RowMorph'.
 {-# INLINE morphReadSet #-}
 morphReadSet :: RowMorph a b -> IntSet
 morphReadSet (RowMorph primArr) =
@@ -175,7 +175,7 @@ morphReadSet (RowMorph primArr) =
 
 {- |
 Universal structural liveness and effect footprint analysis pass.
-Directly inspects unpacked constructor tags, 'RowMorph' primitive arrays, and 'Record' lengths.
+Directly inspects unpacked constructor tags, 't:RowMorph' primitive arrays, and 'Record' lengths.
 
 See Note [Static Reflection and Cayley Analysis] [ref:note-static-cayley].
 -}

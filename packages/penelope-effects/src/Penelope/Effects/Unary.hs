@@ -24,7 +24,7 @@ Maintainer  : nadia.yvette.chambers@ik.me
 Stability   : experimental
 Portability : non-portable (GHC extensions)
 
-Provides a standard unary monadic interface ('Eff') over Penelope's polycategorical core.
+Provides a standard unary monadic interface ('t:Eff') over Penelope's polycategorical core.
 
 See Note [Zero-Cost Surface Specializations] [ref:note-surface-facades].
 -}
@@ -123,7 +123,7 @@ bindEff (Eff p) k =
   in Eff (seqPenelope p stage)
 
 {- |
-Inject a first-order unary algebraic effect into 'Eff'.
+Inject a first-order unary algebraic effect into 't:Eff'.
 Resolves the constructor tag in \(O(1)\) at compile time via 'ConstructorIndex'.
 
 See Note [Zero-Cost Surface Specializations] [ref:note-surface-facades].
@@ -185,7 +185,7 @@ mkEffHandler runOp = Handler $ \_inMap opAny kConts ->
        runFrameKleisli (retK resFrame) resFrame
 
 {- |
-Execute a pure, closed 'Eff' computation to its final value.
+Execute a pure, closed 't:Eff' computation to its final value.
 
 See Note [Zero-Cost Surface Specializations] [ref:note-surface-facades].
 -}
@@ -197,7 +197,7 @@ runEff (Eff p) =
   in unsafeCoerce# val
 
 {- |
-Execute an effectful 'Eff' computation into a target 'Monad' using a handler vector.
+Execute an effectful 't:Eff' computation into a target 'Monad' using a handler vector.
 
 See Note [Zero-Cost Surface Specializations] [ref:note-surface-facades].
 -}

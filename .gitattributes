@@ -1,0 +1,5 @@
+# GitHub Linguist language overrides
+# Keep Penelope classified purely as Haskell
+bin/* linguist-vendored
+*.sh linguist-vendored
+scripts/** linguist-vendored

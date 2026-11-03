@@ -1,15 +1,15 @@
 -- | Module: Penelope.Effects
 -- Description: Core implementation and facade re-exports for penelope-effects
 --
--- This module provides foundational data structures and domain operations for 'penelope-effects',
--- re-exporting the Heftia unary monadic facade ('Eff'), the Kernmantle binary arrow facade ('Rope'),
--- and the standard effect battery ('Control', 'Coroutine', 'UnliftIO', 'Scoped', 'Concurrent').
+-- This module provides foundational data structures and domain operations for @penelope-effects@,
+-- re-exporting the Heftia unary monadic facade ('t:Eff'), the Kernmantle binary arrow facade ('t:Rope'),
+-- and the standard effect battery (@Control@, @Coroutine@, @UnliftIO@, @Scoped@, @Concurrent@).
 --
 -- = Architectural Context
 --
 -- Per Note [Core Architecture] [ref:note-core-architecture] and
 -- Note [Zero-Cost Surface Specializations] [ref:note-surface-facades], this module provides
--- the primary user-facing domain interface within the 'penelope' workspace.
+-- the primary user-facing domain interface within the @penelope@ workspace.
 --
 -- == Invariants & Guarantees
 --
@@ -50,7 +50,7 @@ import Penelope.Effects.Scoped
 import Penelope.Effects.Unary
 import Penelope.Effects.UnliftIO
 
--- | Represents a core domain entity within the 'penelope-effects' package.
+-- | Represents a core domain entity within the @penelope-effects@ package.
 --
 -- Tracks the enclosing workspace name and the module identifier.
 data Entity = Entity
@@ -62,14 +62,14 @@ data Entity = Entity
 
 -- | Canonical default entity for 'Penelope.Effects'.
 --
--- Returns an 'Entity' bound to the workspace name and current module name.
+-- Returns an 't:Entity' bound to the workspace name and current module name.
 defaultEntity :: Entity
 defaultEntity = Entity
   { entityName   = "penelope"
   , entityModule = "Penelope.Effects"
   }
 
--- | Formats an 'Entity' into a human-readable display string.
+-- | Formats an 't:Entity' into a human-readable display string.
 --
 -- Computes a combined representation: @"<entityName>:<entityModule>"@.
 renderEntity :: Entity -> Text

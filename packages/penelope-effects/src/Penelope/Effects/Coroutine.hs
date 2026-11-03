@@ -107,7 +107,7 @@ data AwaitEff (y :: Type) (a :: Type) where
   Await :: AwaitEff y y
 
 {- |
-Yield a value of type @y@ from within an 'Eff' computation.
+Yield a value of type @y@ from within an 't:Eff' computation.
 
 See Note [Core Architecture] [ref:note-core-architecture] and
 Note [Zero-Cost Surface Specializations] [ref:note-surface-facades].
@@ -157,7 +157,7 @@ instance Monad (GenState s) where
     in runGenState (k a) s1
 
 {- |
-Execute a generator 'Eff' computation, returning the list of yielded items
+Execute a generator 't:Eff' computation, returning the list of yielded items
 along with the final return value in a pure pair @([y], a)@.
 
 See Note [Core Architecture] [ref:note-core-architecture] and
@@ -179,7 +179,7 @@ runGenerator prog =
   in (diffRes [], finalVal)
 
 {- |
-Execute a generator 'Eff' computation under 'IO' using an 'IORef'.
+Execute a generator 't:Eff' computation under 'IO' using an @IORef@.
 
 See Note [Core Architecture] [ref:note-core-architecture] and
 Note [Zero-Cost Surface Specializations] [ref:note-surface-facades].
@@ -219,7 +219,7 @@ data NonDetEff (a :: Type) where
   Empty  :: NonDetEff a
 
 {- |
-Emit a binary choice point in 'Eff'.
+Emit a binary choice point in 't:Eff'.
 
 See Note [Core Architecture] [ref:note-core-architecture] and
 Note [Zero-Cost Surface Specializations] [ref:note-surface-facades].
@@ -257,7 +257,7 @@ nonDetHandler = mkEffHandler $ \case
   Empty  -> []
 
 {- |
-Execute a non-deterministic 'Eff' computation, returning all valid execution paths.
+Execute a non-deterministic 't:Eff' computation, returning all valid execution paths.
 
 See Note [Core Architecture] [ref:note-core-architecture] and
 Note [Zero-Cost Surface Specializations] [ref:note-surface-facades].

@@ -124,7 +124,7 @@ whileElaborator = Elaborator $ \inMap regs _ kConts ->
     )
 
 {- |
-Convenient monadic 'While' combinator for 'Eff'.
+Convenient monadic 'While' combinator for 't:Eff'.
 
 See Note [Core Architecture] [ref:note-core-architecture] and
 Note [Zero-Cost Surface Specializations] [ref:note-surface-facades].
@@ -237,7 +237,7 @@ sagaElaborator = Elaborator $ \inMap regs _ kConts ->
     )
 
 {- |
-Execute a transactional saga in 'Eff': runs action, and if an exception occurs,
+Execute a transactional saga in 't:Eff': runs action, and if an exception occurs,
 executes the compensation handler before returning the failure.
 
 See Note [Core Architecture] [ref:note-core-architecture] and

@@ -53,11 +53,11 @@ Used as the sort for higher-order scoped sub-regions.
 -}
 data PortSig = PortSig (RowOf Type) (RowOf Type)
 
--- | Extract the input port row from a 'PortSig'.
+-- | Extract the input port row from a 't:PortSig'.
 type family RegionIns (sig :: PortSig) :: RowOf Type where
   RegionIns ('PortSig ins _) = ins
 
--- | Extract the output port row from a 'PortSig'.
+-- | Extract the output port row from a 't:PortSig'.
 type family RegionOuts (sig :: PortSig) :: RowOf Type where
   RegionOuts ('PortSig _ outs) = outs
 

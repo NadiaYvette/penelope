@@ -85,7 +85,7 @@ data ConcurrentEff (a :: Type) where
   WaitAction  :: AsyncHandle a -> ConcurrentEff a
 
 {- |
-Fork a background IO action from within 'Eff'.
+Fork a background IO action from within 't:Eff'.
 
 See Note [Core Architecture] [ref:note-core-architecture] and
 Note [Zero-Cost Surface Specializations] [ref:note-surface-facades].
@@ -194,7 +194,7 @@ concurrentHandler = mkEffHandler $ \case
       Right val -> pure val
 
 {- |
-Execute a concurrent 'Eff' computation under 'IO'.
+Execute a concurrent 't:Eff' computation under 'IO'.
 
 See Note [Core Architecture] [ref:note-core-architecture] and
 Note [Zero-Cost Surface Specializations] [ref:note-surface-facades].

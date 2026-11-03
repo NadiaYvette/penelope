@@ -130,7 +130,7 @@ bracketElaborator = Elaborator $ \inMap regs _ kConts ->
     )
 
 {- |
-Bracket pattern for 'Eff' ensuring resource cleanup.
+Bracket pattern for 't:Eff' ensuring resource cleanup.
 
 See Note [Core Architecture] [ref:note-core-architecture] and
 Note [Zero-Cost Surface Specializations] [ref:note-surface-facades].
@@ -149,7 +149,7 @@ bracketEff acquire release action = do
   pure val
 
 {- |
-Bracket pattern for 'Eff' with error exit propagation ensuring resource cleanup
+Bracket pattern for 't:Eff' with error exit propagation ensuring resource cleanup
 on both successful and failed branches.
 
 See Note [Core Architecture] [ref:note-core-architecture] and
@@ -222,7 +222,7 @@ data ProviderEff (r :: Type) (a :: Type) where
   AskProvider :: ProviderEff r r
 
 {- |
-Query the provided environment from within 'Eff'.
+Query the provided environment from within 't:Eff'.
 
 See Note [Core Architecture] [ref:note-core-architecture] and
 Note [Zero-Cost Surface Specializations] [ref:note-surface-facades].
@@ -250,7 +250,7 @@ providerHandler env = mkEffHandler $ \case
   AskProvider -> pure env
 
 {- |
-Run an 'Eff' computation with a provided environment handle @r@ purely.
+Run an 't:Eff' computation with a provided environment handle @r@ purely.
 
 See Note [Core Architecture] [ref:note-core-architecture] and
 Note [Zero-Cost Surface Specializations] [ref:note-surface-facades].

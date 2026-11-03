@@ -26,7 +26,7 @@ Stability   : experimental
 Portability : non-portable (GHC extensions)
 
 Provides partial effect peeling ('interpretSub'), lowering a subset of first-order
-operations ('efSub') while leaving residual unhandled effects ('efRem') intact in the syntax tree.
+operations (@efSub@) while leaving residual unhandled effects (@efRem@) intact in the syntax tree.
 
 See Note [Two-Phase Weaving and Unweaving] [ref:note-two-phase-engine].
 -}

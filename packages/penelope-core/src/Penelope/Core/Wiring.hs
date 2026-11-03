@@ -111,7 +111,7 @@ rmapFused f (RowRep (Rep tag arr)) =
   in RowRep (Rep tag arr')
 
 {- |
-Pre-compose a static 'RowMorph' wire routing stage before a downstream 'Penelope' pipeline.
+Pre-compose a static 't:RowMorph' wire routing stage before a downstream 'Penelope' pipeline.
 Peephole-fuses into 'fuseRoute' if the downstream stage is also a 'Route', elides identity
 morphisms in O(1) time, or distributes into continuation gather maps.
 
@@ -299,7 +299,7 @@ weakenRow ::
 weakenRow = ScopeRow (rowMorph @ehSub @ehFull) (rowMorph @efSub @efFull)
 
 {- |
-Embed a computation into wider effect rows using explicit 'RowMorph' mappings.
+Embed a computation into wider effect rows using explicit 't:RowMorph' mappings.
 
 See Note [Institutional Satisfaction and Zero-Traversal Weakening] [ref:note-satisfaction-weakening].
 -}
