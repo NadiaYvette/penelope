@@ -22,3 +22,5 @@ cabal.project.local*
 *~
 *.swp
 *.swo
+__pycache__/
+*.pyc

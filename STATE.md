@@ -65,28 +65,33 @@ SPDX-License-Identifier: EUPL-1.2 OR Apache-2.0
     - Certified scoped reader modification ('local'), error boundary trapping ('catchError'), and multi-shot coroutine resumption ('runNonDet' / 'branch').
     - Fast-forward merged via `yamaarashi-exec` task packet `phase6-04-benchmarks` (commit `19a6948`).
 
+ 9. **Exhaustive Technical Documentation Overhaul Complete:**
+    - `README.md` completely expanded with Homer's *Odyssey* 2.104–105 hexameter, philological root verb analysis (*ὑφαίνεσκεν* vs *ἀλλύεσκεν*), Penelope/Polytropos matrimonial pairing, memory physics, and the Classical Hermeneutic Pattern.
+    - `docs/TUTORIAL.md` expanded with comprehensive 6-lesson walkthrough: Heftia unary track (`Eff`), Kernmantle binary track (`Rope`), all 7 polycategorical superpowers, and a full capstone project (`OrderProcessing`).
+    - `docs/NEWBIE_GUIDE.md` expanded with token-conservation progressive disclosure funnel, `./tags` fast symbol lookup, and port/row mental model.
+    - `docs/MAINTAINER_GUIDE.md` expanded with 5-gate physical verification discipline (`./bin/penelope-verify`), GHC Core inspection invariants, benchmark reproduction, and release management.
+    - `docs/INDEX.md` populated with full corpus inventory table across all 31 documents/packets and 8 curated audience reading paths.
+    - `docs/notes/DOC_STRATEGY.md` codified with 4-audience map, canonicity per fact class, §4 precedence rule, and the Classical Hermeneutic Pattern (§12).
+    - `docs/notes/COMMIT_ATTRIBUTION.md` aligned with RFC 2822 trailer standards (`Assisted-by:`).
+    - All 5 physical verification gates verified cleanly via `./bin/penelope-verify`: 0 HLint hints, all test suites passing, 8 tags / 652 references validated in Tagref, 0 broken links (126 checked across 25 files), and comment density compliant.
+
 ---
 
 ## Active Frontier
 
-- **Phase 6: Formal Verification, Soundness Certification & Benchmarking [COMPLETED]**
-  - [x] **Milestone 6.1: GHC Core Inspection (`inspection-testing`)**
-    - Verify `sendPolyF` and `sendPolyH` compile to literal unboxed `Word#` constants with zero residual dictionaries.
-    - Verify `elaborateAll` and `interpretAll` compile to direct `indexSmallArray#` primitive reads without linear branch cascades.
-  - [x] **Milestone 6.2: Institutional Satisfaction & Reduct Property Tests (`QuickCheck`)**
-    - Property-test Reduct-Evaluation Identity: $\text{eval}_J(\mathcal{H}, \sigma_*(P)) \equiv \text{eval}_I(\sigma^*(\mathcal{H}), P)$ across randomized row permutations.
-    - Property-test Static-Elaboration Commutativity: verify metadata extracted by `StaticPenelope` is identical before and after `elaborateAll`.
-  - [x] **Milestone 6.3: Heftia Scoped Semantics & Concurrency Test Suite**
-    - Port Heftia's `UnliftIO`, `Concurrent`, and `Coroutine` + `Local`/`Catch` interaction test suites.
-    - Certify scoped effects unrolled during `elaborateAll` never leak handles or corrupt state across multi-shot coroutines.
-  - [x] **Milestone 6.4: Allocation & Throughput Benchmarks (`tasty-bench`)**
-    - Benchmark deep effect stacks ($D = 30$ first-order, $H = 15$ higher-order) and wide register frames ($m, n = 20$ ports).
-    - Compare throughput, RSS, and nursery allocations against `heftia`, `effectful`, and `kernmantle`.
+- **Technical Documentation & Hackage Readiness Overhaul [COMPLETED]**
+  - [x] Homeric textual anchor and philological analysis (*Odyssey* 2.104–105) in `README.md`
+  - [x] Classical Hermeneutic Pattern formalized in `DOC_STRATEGY.md` §12
+  - [x] 6-Lesson Interactive Tutorial (`TUTORIAL.md`) covering Heftia, Kernmantle, and Penelope superpowers
+  - [x] Progressive disclosure Newbie Guide (`NEWBIE_GUIDE.md`)
+  - [x] Maintainer Guide (`MAINTAINER_GUIDE.md`) covering 5 verification gates
+  - [x] Corpus Inventory and Reading Map (`INDEX.md`)
+  - [x] 5-Gate Physical Verification passing cleanly (`./bin/penelope-verify`)
 
 ---
 
 ## Workspace Milestone Complete
 
-All six planned engineering phases of the **penelope** polycategorical effect system are now fully implemented, formally verified via GHC Core inspection, property tested across institutional reducts, certified across concurrent scoped interactions, and verified for \(O(1)\) allocation and throughput scalability. All 18 task packets are verified and marked `DONE` on the Kanban ledger.
+All six planned engineering phases and the comprehensive documentation overhaul of the **penelope** polycategorical effect system are now fully implemented, formally verified via GHC Core inspection, property tested across institutional reducts, certified across concurrent scoped interactions, and verified for \(O(1)\) allocation and throughput scalability. All 18 task packets are verified and marked `DONE` on the Kanban ledger.
 
 
