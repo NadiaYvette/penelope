@@ -73,7 +73,12 @@ SPDX-License-Identifier: EUPL-1.2 OR Apache-2.0
     - `docs/INDEX.md` populated with full corpus inventory table across all 31 documents/packets and 8 curated audience reading paths.
     - `docs/notes/DOC_STRATEGY.md` codified with 4-audience map, canonicity per fact class, §4 precedence rule, and the Classical Hermeneutic Pattern (§12).
     - `docs/notes/COMMIT_ATTRIBUTION.md` aligned with RFC 2822 trailer standards (`Assisted-by:`).
-    - All 5 physical verification gates verified cleanly via `./bin/penelope-verify`: 0 HLint hints, all test suites passing, 8 tags / 652 references validated in Tagref, 0 broken links (126 checked across 25 files), and comment density compliant.
+ 10. **Wave 0 / TP-001B Deliverables Complete & Merged:**
+     - Grounded 2LTT `EffectVectorDescriptor` and `ResumptionKind` (`TailResumptive` vs `DelimitedOneShot`) in `Penelope.Core.Engine` and re-exported in `Penelope.Core`.
+     - Provided `buildEffectVectorDescriptor` and `defaultClassifyEffect` for vector-dispatched lowering in `gargamelle` and `OrganIR`.
+     - Re-exported Phase 1 elaboration (`elaborateAll`) and Phase 2 interpretation (`interpretAll`, `runPenelopePure`) metadata extractors.
+     - Established comprehensive unit test suite in `packages/penelope-core/test/Main.hs`.
+     - Fast-forward merged via `yamaarashi-exec` task packet `TP-001B` (commit `6dfe68d`).
 
 ---
 
