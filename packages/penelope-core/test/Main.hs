@@ -471,3 +471,34 @@ main = hspec $ do
           !(Identity xVal) = indexSmallArray (let RowRep (Rep _ arr) = outFrame in arr) 0
       (unsafeCoerce# xVal :: Int) `shouldBe` 77
 
+  describe "Penelope.Core.Engine (2LTT EffectVectorDescriptor)" $ do
+    it "classifies standard effects with defaultClassifyEffect" $ do
+      defaultClassifyEffect "State" `shouldBe` TailResumptive
+      defaultClassifyEffect "Reader" `shouldBe` TailResumptive
+      defaultClassifyEffect "Writer" `shouldBe` TailResumptive
+      defaultClassifyEffect "Fuel" `shouldBe` TailResumptive
+      defaultClassifyEffect "Coroutine" `shouldBe` DelimitedOneShot
+      defaultClassifyEffect "Abort" `shouldBe` DelimitedOneShot
+      defaultClassifyEffect "Async" `shouldBe` DelimitedOneShot
+      defaultClassifyEffect "CustomEffect" `shouldBe` DelimitedOneShot
+
+    it "builds EffectVectorDescriptor with sorted slots and correct indices" $ do
+      let effs = ["Writer", "State", "Coroutine", "Reader"]
+          desc = buildEffectVectorDescriptor defaultClassifyEffect effs (Just "r")
+      evdOpenTail desc `shouldBe` Just "r"
+      evdSlotMap desc `shouldBe`
+        [ ("Coroutine", (0, DelimitedOneShot))
+        , ("Reader", (1, TailResumptive))
+        , ("State", (2, TailResumptive))
+        , ("Writer", (3, TailResumptive))
+        ]
+
+    it "builds closed EffectVectorDescriptor" $ do
+      let effs = ["Fuel", "State"]
+          desc = buildEffectVectorDescriptor defaultClassifyEffect effs Nothing
+      evdOpenTail desc `shouldBe` Nothing
+      evdSlotMap desc `shouldBe`
+        [ ("Fuel", (0, TailResumptive))
+        , ("State", (1, TailResumptive))
+        ]
+
