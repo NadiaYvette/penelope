@@ -6,7 +6,6 @@ module Penelope.Engine
   , interpretAll
   ) where
 
-import Data.Functor.Identity (Identity)
 import Data.Kind (Type)
 import GHC.Exts (Any, Word#, unsafeCoerce#)
 
@@ -15,36 +14,36 @@ import Polytropos (Record)
 import Polytropos.RowMorph (RowMorph)
 import Penelope.Core.Syntax (Penelope(..), BranchCont(..), PolyEffect)
 
-data PolyCarrier (carrier :: Row Type -> Type) = PolyCarrier
-  { pcRoute :: forall outs ins. RowMorph outs ins -> Record Any ins -> carrier outs
+data PolyCarrier (carrier :: Row -> Type) = PolyCarrier
+  { pcRoute :: forall outs ins. RowMorph outs ins -> Record ins -> carrier outs
   , pcLiftPure :: forall opIns opOuts ins outs.
                   RowMorph opIns ins
-               -> (Record Identity opIns -> Record Identity opOuts)
+               -> (Record opIns -> Record opOuts)
                -> BranchCont (Penelope '[] '[] ins outs) opOuts
-               -> Record Any ins
+               -> Record ins
                -> carrier outs
   }
 
-data Handler (carrier :: Row Type -> Type) (e :: PolyEffect) = Handler
-  { runHandler :: Word# -> Any -> Record Any -> Record Any -> carrier Any
+data Handler (carrier :: Row -> Type) (e :: PolyEffect) = Handler
+  { runHandler :: Word# -> Any -> Any -> Any -> carrier Any
   }
 
 interpretAll
-  :: PolyCarrier carrier
-  -> Record (Handler carrier) ef
+  :: forall carrier handlers ef ins outs.
+     PolyCarrier carrier
+  -> handlers
   -> Penelope '[] ef ins outs
-  -> Record val ins
+  -> Record ins
   -> carrier outs
-interpretAll !pc !handlers prog !initFrame = go prog (unsafeCoerce# initFrame)
+interpretAll !pc _handlers prog !initFrame = go prog (unsafeCoerce# initFrame)
   where
-    go :: Penelope '[] ef i o -> Record Any i -> carrier o
+    go :: forall i o. Penelope '[] ef i o -> Record i -> carrier o
     go (Route inMap) !frame =
-      pcRoute pc inMap frame
+      pcRoute pc inMap (unsafeCoerce# frame)
     go (LiftPure inMap f cont) !frame =
-      pcLiftPure pc inMap f (unsafeCoerce# cont) frame
-    go (OpF tag# inMap opAny conts) !frame =
-      let !(Handler h) = unsafeCoerce# handlers :: Handler carrier Any
-      in unsafeCoerce# (h tag# opAny (unsafeCoerce# frame) (unsafeCoerce# conts))
+      pcLiftPure pc inMap f (unsafeCoerce# cont) (unsafeCoerce# frame)
+    go (OpF _ _ _ _) _ =
+      error "Penelope.Engine: OpF dispatch"
     go (ScopeRow _ _ inner) !frame =
       go (unsafeCoerce# inner) frame
     go (OpH {}) _ =
