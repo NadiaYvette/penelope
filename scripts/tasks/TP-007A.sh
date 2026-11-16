@@ -8,14 +8,12 @@ mkdir -p packages/penelope-core/src/Penelope
 # 1. Mount seed
 cp -f /home/nyc/src/plans/seeds/TP-007A-Perceus.hs packages/penelope-core/src/Penelope/Perceus.hs
 
-# 2. Expose Penelope.Perceus in penelope-core.cabal and add containers to test-suite if missing
+# 2. Expose Penelope.Perceus in penelope-core.cabal
 python3 -c '
 with open("packages/penelope-core/penelope-core.cabal", "r") as f:
     content = f.read()
 if "Penelope.Perceus" not in content:
     content = content.replace("Penelope.Core\n", "Penelope.Core\n    Penelope.Perceus\n")
-if "containers >= 0.6" not in content:
-    content = content.replace("    hspec >= 2.11", "    containers >= 0.6 && < 0.9,\n    hspec >= 2.11")
 with open("packages/penelope-core/penelope-core.cabal", "w") as f:
     f.write(content)
 '
