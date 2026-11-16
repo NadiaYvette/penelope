@@ -59,6 +59,7 @@ test-suite tests
   build-depends:
     base >= 4.14 && < 5,
     hspec >= 2.11 && < 2.12,
+    primitive >= 0.9 && < 0.10,
     text >= 2.0 && < 2.2,
     penelope-core,
     penelope-backend-mlir,
@@ -68,7 +69,7 @@ EOF
 
 # 3. Create penelope-backend-mlir test/Spec.hs
 cat << 'EOF' > packages/penelope-backend-mlir/test/Spec.hs
-{-# LANGUAGE OverloadedStrings, DataKinds, TypeApplications, TypeOperators #-}
+{-# LANGUAGE OverloadedStrings, DataKinds, TypeApplications, TypeOperators, MagicHash #-}
 {-# OPTIONS_GHC -fplugin=Polytropos.Plugin #-}
 module Main (main) where
 
@@ -78,7 +79,8 @@ import GHC.Exts (unsafeCoerce#)
 import Penelope.Core
 import Penelope.Backend.Plugin
 import Penelope.Backend.MLIR
-import Penelope.Perceus (PlacePlan(..))
+import Penelope.Perceus (PlacePlan(..), RTSProfile(..))
+import Polytropos (RecordF)
 import Polytropos.Core (Pair(..), Rep(..), RowRep(..))
 import Polytropos.RowMorph (rowMorph)
 import Data.Primitive.SmallArray (smallArrayFromList)
@@ -90,6 +92,7 @@ main = hspec $ do
       let m = rowMorph @'["x" ':= Int] @'["x" ':= Int]
           term :: Penelope '[] '[] '["x" ':= Int] '["x" ':= Int]
           term = Route m
+          initFrame :: RecordF SSAVal '["x" ':= Int]
           initFrame = RowRep (Rep 0 (smallArrayFromList [unsafeCoerce# (SSAVal "%arg0")]))
           out = compileWithBackend mlirBackendPlugin defaultHostTargetLayout RTSFreestandingLinear term initFrame
       T.isInfixOf "func.func @penelope_entry" out `shouldBe` True
@@ -99,7 +102,7 @@ main = hspec $ do
       let plan = PlaceInPlaceLinear 0 (unsafeCoerce# ())
           (_, linesOut, SSAVal outReg) = emitMLIRSlotUpdate plan (SSAVal "%r0") 0 (SSAVal "%v0") 1
       outReg `shouldBe` "%r_1"
-      head linesOut `shouldBe` "    %r_1 = organ.rep.slot_update %r0[0], %v0 {reuse = #organ.freestanding_linear} : !organ.rep"
+      take 1 linesOut `shouldBe` ["    %r_1 = organ.rep.slot_update %r0[0], %v0 {reuse = #organ.freestanding_linear} : !organ.rep"]
 EOF
 
 # 4. Create penelope-backend-gimple.cabal
@@ -149,6 +152,7 @@ test-suite tests
   build-depends:
     base >= 4.14 && < 5,
     hspec >= 2.11 && < 2.12,
+    primitive >= 0.9 && < 0.10,
     text >= 2.0 && < 2.2,
     penelope-core,
     penelope-backend-gimple,
@@ -158,7 +162,7 @@ EOF
 
 # 5. Create penelope-backend-gimple test/Spec.hs
 cat << 'EOF' > packages/penelope-backend-gimple/test/Spec.hs
-{-# LANGUAGE OverloadedStrings, DataKinds, TypeApplications, TypeOperators #-}
+{-# LANGUAGE OverloadedStrings, DataKinds, TypeApplications, TypeOperators, MagicHash #-}
 {-# OPTIONS_GHC -fplugin=Polytropos.Plugin #-}
 module Main (main) where
 
@@ -168,7 +172,8 @@ import GHC.Exts (unsafeCoerce#)
 import Penelope.Core
 import Penelope.Backend.Plugin
 import Penelope.Backend.Gimple
-import Penelope.Perceus (PlacePlan(..))
+import Penelope.Perceus (PlacePlan(..), RTSProfile(..))
+import Polytropos (RecordF)
 import Polytropos.Core (Pair(..), Rep(..), RowRep(..))
 import Polytropos.RowMorph (rowMorph)
 import Data.Primitive.SmallArray (smallArrayFromList)
@@ -180,6 +185,7 @@ main = hspec $ do
       let m = rowMorph @'["x" ':= Int] @'["x" ':= Int]
           term :: Penelope '[] '[] '["x" ':= Int] '["x" ':= Int]
           term = Route m
+          initFrame :: RecordF GimpleVal '["x" ':= Int]
           initFrame = RowRep (Rep 0 (smallArrayFromList [unsafeCoerce# (GimpleVal "r_3(D)")]))
           out = compileWithBackend gimpleBackendPlugin defaultHostTargetLayout RTSFreestandingLinear term initFrame
       T.isInfixOf "penelope_gimple_entry" out `shouldBe` True

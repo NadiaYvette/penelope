@@ -19,7 +19,7 @@ data PolyCarrier (carrier :: Row -> Type) = PolyCarrier
   , pcLiftPure :: forall opIns opOuts ins outs.
                   RowMorph opIns ins
                -> (Record opIns -> Record opOuts)
-               -> BranchCont (Penelope '[] '[] ins outs) opOuts
+               -> BranchCont (carrier outs) opOuts
                -> Record ins
                -> carrier outs
   }
@@ -40,8 +40,8 @@ interpretAll !pc _handlers prog !initFrame = go prog (unsafeCoerce# initFrame)
     go :: forall i o. Penelope '[] ef i o -> Record i -> carrier o
     go (Route inMap) !frame =
       pcRoute pc inMap (unsafeCoerce# frame)
-    go (LiftPure inMap f cont) !frame =
-      pcLiftPure pc inMap f (unsafeCoerce# cont) (unsafeCoerce# frame)
+    go (LiftPure inMap f (BranchCont k)) !frame =
+      pcLiftPure pc inMap f (BranchCont (\mid -> go (k mid) frame)) (unsafeCoerce# frame)
     go (OpF _ _ _ _) _ =
       error "Penelope.Engine: OpF dispatch"
     go (ScopeRow _ _ inner) !frame =
