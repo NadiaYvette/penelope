@@ -29,6 +29,7 @@ source-repository head
 library
   exposed-modules:
     Penelope.Core
+    Penelope.Engine
     Penelope.Perceus
     Penelope.Core.Syntax
     Penelope.Core.Route
