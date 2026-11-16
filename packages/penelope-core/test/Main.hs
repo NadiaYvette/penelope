@@ -14,6 +14,9 @@ module Main (main) where
 
 import Test.Hspec
 import Penelope.Core
+import Penelope.Perceus
+import qualified Data.IntMap.Strict as IM
+import qualified Data.IntSet as IS
 import Polytropos (Field (..), emptyRecord, insertField)
 import Polytropos.Core (Pair (..), Rep (..), RowRep (..))
 import Polytropos.RowMorph (KnownRowMorph (..))
@@ -502,3 +505,35 @@ main = hspec $ do
         , ("State", (1, TailResumptive))
         ]
 
+
+
+  describe "Penelope.Perceus" $ do
+    it "gathers histogram from a RowMorph" $ do
+      let m = rowMorph @'["x" ':= Int] @'["x" ':= Int]
+          hist = gatherHistogram m
+      IM.lookup 0 hist `shouldBe` Just 1
+
+    it "analyzes liveness of a simple Route term" $ do
+      let m = rowMorph @'["x" ':= Int] @'["x" ':= Int, "y" ':= Bool]
+          term :: Penelope '[] '[] '["x" ':= Int, "y" ':= Bool] '["x" ':= Int]
+          term = Route m
+          live = analyzePerceusLiveness term
+      IS.member 0 live `shouldBe` True
+
+    it "computes Perceus place plan for in-place reuse in freestanding linear profile" $ do
+      let m = rowMorph @'["x" ':= Int] @'["x" ':= Int]
+          boxedIn = IM.singleton 0 (SizeClass 1)
+          liveIn = IS.singleton 0
+          branchLives = [IS.empty]
+          boxedOut = IM.singleton 0 (SizeClass 1)
+          plan = computeNodePerceusPlan RTSFreestandingLinear boxedIn liveIn m branchLives boxedOut
+      IM.lookup 0 (pnOutputPlaces plan) `shouldBe` Just (PlaceInPlaceLinear 0 (SizeClass 1))
+
+    it "computes Perceus place plan for fresh alloc when no reusable slot matches" $ do
+      let m = rowMorph @'["x" ':= Int] @'["x" ':= Int]
+          boxedIn = IM.empty
+          liveIn = IS.empty
+          branchLives = [IS.empty]
+          boxedOut = IM.singleton 0 (SizeClass 1)
+          plan = computeNodePerceusPlan RTSFreestandingLinear boxedIn liveIn m branchLives boxedOut
+      IM.lookup 0 (pnOutputPlaces plan) `shouldBe` Just (PlaceFreshAlloc (SizeClass 1))
