@@ -22,3 +22,4 @@
 - ignore: {name: "Use id"}
 - ignore: {name: "Use <$>"}
 - ignore: {name: "Eta reduce"}
+- ignore: {name: "Use record patterns"}

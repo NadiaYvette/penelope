@@ -14,7 +14,7 @@ verify_hlint() {
     hlint_cmd="$(command -v hlint)"
   fi
   if [[ -n "${hlint_cmd}" ]]; then
-    "${hlint_cmd}" "${REPO_ROOT}"/packages/*/src >/dev/null
+    "${hlint_cmd}" --hint="${REPO_ROOT}/.hlint.yaml" "${REPO_ROOT}"/packages/*/src >/dev/null
     echo "  [+] Clean HLint run: 0 hints."
   else
     echo "  [SKIP] hlint binary not found."
