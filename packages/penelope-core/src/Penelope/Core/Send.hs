@@ -22,6 +22,22 @@ This module provides zero-overhead smart constructors ('sendPolyF', 'sendPolyH')
 injecting algebraic effect operations into the 'Penelope' polycategorical core.
 
 See Note [Unpacked Polycategorical Representation] [ref:note-unpacked-representation].
+
+{- Note [Compile-Time Smart Effect Injection and Constructor Indexing]
+Injecting effect operations into an extensible row often introduces runtime search overheads
+(such as dictionary passing or dynamic type checks). Penelope eliminates all runtime search
+at the injection boundary:
+
+1. **Constructor Tag Resolution:** 'ConstructorIndex l ef' is solved at compile-time by
+   'Polytropos.Plugin'. The literal index is synthesized directly into Core AST as an
+   unboxed machine word (@W# tag#@), resulting in an immediate constant operand.
+2. **Input Port Gathering:** 'KnownRowMorph opIns ins' is similarly solved at compile-time,
+   synthesizing an unboxed index array ('RowMorph') that gathers only the required subset
+   of input registers from the wider environment.
+3. **Smart Constructors:** 'sendPolyF' constructs 'OpF' for first-order operations, while
+   'sendPolyH' constructs 'OpH' for higher-order operations with scoped sub-regions.
+   Prime variants ('sendPolyF'', 'sendPolyH'') accept pre-computed exit continuation records.
+-}
 -}
 module Penelope.Core.Send
   ( -- * Smart Constructors

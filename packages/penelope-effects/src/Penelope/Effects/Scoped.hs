@@ -31,6 +31,30 @@ suspensions or non-deterministic branching resumptions.
 See Note [Core Architecture] [ref:note-core-architecture],
 Note [Zero-Cost Surface Specializations] [ref:note-surface-facades], and
 Note [Two-Phase Weaving and Unweaving] [ref:note-two-phase-engine].
+
+{- Note [Delimited Scoped Effects and Higher-Order Elaboration]
+Higher-order algebraic effects (such as 'local' in Reader, 'catchError' in Error,
+or transaction brackets in Database) pose a notorious challenge for algebraic effect systems:
+unlike first-order operations, they enclose an inner sub-computation whose execution scope
+is strictly delimited.
+
+In traditional monad-transformer stacks and early algebraic effect libraries:
+1. Multi-shot continuations or non-deterministic branching (e.g. 'NonDet', 'Logic')
+   frequently leak state across scope boundaries.
+2. Interleaving coroutines ('yield' / 'await') can resume after the enclosing 'local'
+   block has exited, corrupting the caller's environment.
+3. Lifting scoped effects through layers requires complex and fragile boilerplate
+   ('defaultLiftLocal', 'weave').
+
+Penelope resolves this cleanly through its polycategorical architecture:
+- Scoped constructs are modeled as higher-order regions ('OpH') containing explicit
+  sub-hypergraphs ('Region').
+- During Phase 1 ('elaborateAll'), higher-order elaborators ('localElaborator',
+  'catchElaborator') weave the enclosing boundary into first-order algebraic operations ('OpF')
+  guarded by entry and exit actions.
+- During Phase 2 ('interpretAll'), the vectorized handler receives the flattened stream
+  of operations, maintaining lexical environment safety with zero dynamic heap allocation.
+-}
 -}
 module Penelope.Effects.Scoped
   ( -- * Scoped Reader Effect
@@ -173,6 +197,19 @@ throw = throwError @"error"
 Walk the 'Penelope' polycategorical graph, transforming every 'Ask' node targeted
 by @targetTag#@ so its return continuation receives the locally modified environment.
 
+== Invariants & Operational Guarantees
+1. __Lexical Isolation:__
+   Transformations apply strictly to 'Ask' operations inside the delimited sub-graph.
+   Sibling or downstream nodes outside the scope boundary continue to observe the
+   outer ambient environment unchanged.
+2. __Coroutine Immunity:__
+   Because the local modification is threaded algebraically into the continuation
+   leaves rather than stored in a mutable process-wide dynamic variable, pausing or
+   resuming a coroutine within the delimited region never clobbers caller state.
+3. __Zero Heap Allocations:__
+   Unboxed tag comparison (@eqWord#@) guards the match branch. Non-matching nodes
+   are reconstructed with shared SmallArray slices via 'rmapFused'.
+
 See Note [Two-Phase Weaving and Unweaving] [ref:note-two-phase-engine].
 -}
 localWalk ::
@@ -199,6 +236,8 @@ localWalk !targetTag# f pipe = go pipe
 
       OpF tag# inMap opAny conts
         | isTrue# (tag# `eqWord#` targetTag#) ->
+            -- Matching Ask operation: intercept the return continuation and wrap it with a pure
+            -- transform stage that feeds the updated environment (f curEnv) to downstream nodes.
             let wrapAskCont :: forall branchOuts. BranchCont (Penelope eh ef i o) branchOuts -> BranchCont (Penelope eh ef i o) branchOuts
                 wrapAskCont (BranchCont k) = BranchCont $ \retFrame ->
                   let stage = LiftPure
@@ -214,6 +253,7 @@ localWalk !targetTag# f pipe = go pipe
                   in stage
             in OpF tag# inMap opAny (rmapFused wrapAskCont conts)
         | otherwise ->
+            -- Non-matching first-order operation: recursively walk all branch continuations.
             OpF tag# inMap opAny (rmapFused walkCont conts)
 
       OpH tag# inMap regions opAny conts ->
@@ -258,6 +298,18 @@ local = localAt @"reader"
 Walk the 'Penelope' polycategorical graph, intercepting every 'Throw' node targeted
 by @targetTag#@ and substituting the handler continuation.
 
+== Recovery Semantics & Invariants
+1. __Exception Interception:__
+   When a first-order 'OpF' matches @targetTag#@, the enclosed 'Throw' payload is extracted
+   via unboxed coercion and applied to the recovery function. The remainder of the
+   failing branch is discarded, preventing unhandled abort propagation.
+2. __Dynamic Scope Protection:__
+   Errors raised outside the delimited sub-graph or originating from alternative
+   effect tags bypass this handler unaffected, preserving modularity and error separation.
+3. __Direct Continuation Splicing:__
+   The recovery pipeline produced by the handler is spliced directly into the graph leaf
+   via 'unsafeCoerce#', eliminating intermediate error wrapper allocations ('Left'/'Right').
+
 See Note [Two-Phase Weaving and Unweaving] [ref:note-two-phase-engine].
 -}
 catchWalk ::
@@ -284,10 +336,13 @@ catchWalk !targetTag# handler pipe = go pipe
 
       OpF tag# _inMap opAny _conts
         | isTrue# (tag# `eqWord#` targetTag#) ->
+            -- Matching Throw operation: intercept the abort and substitute the recovery
+            -- handler pipeline, preventing unhandled exception propagation.
             let !(Throw err) = unsafeCoerce# opAny :: ThrowEff e Any
                 !(Eff handlerPipe) = handler err
             in unsafeCoerce# handlerPipe
         | otherwise ->
+            -- Non-matching first-order operation: recursively walk branch continuations.
             OpF tag# _inMap opAny (rmapFused walkCont _conts)
 
       OpH tag# inMap regions opAny conts ->
@@ -348,22 +403,27 @@ localElaborator = Elaborator $ \inMap regs opAny kConts ->
       !(BranchCont retK) = unsafeCoerce# retContAny
   in preComposeRoute inMap (unsafeCoerce# (transformedBody `seqPenelope` retK (unsafeCoerce# emptyRecord)))
 
-{- |
-Elaborator for higher-order 'Catch' effect unrolling into pure first-order @ef@ operations.
-
-See Note [Two-Phase Weaving and Unweaving] [ref:note-two-phase-engine].
--}
+-- | Elaborator for higher-order 'Catch' effect unrolling into pure first-order @ef@ operations.
+--
+-- Unrolls the @"try"@ body and @"catch"@ handler sub-regions:
+-- 1. Extracts the body and handler pipelines from the region array.
+-- 2. Walks the body pipe via 'catchWalk', substituting matching 'Throw' nodes with the handler pipe.
+-- 3. Sequences the transformed body into the exit continuation leaf.
+--
+-- See Note [Two-Phase Weaving and Unweaving] [ref:note-two-phase-engine].
 {-# INLINE catchElaborator #-}
 catchElaborator ::
   forall (l :: Symbol) ef e.
   ConstructorIndex l ef =>
   Elaborator '[] ef (Catch e)
 catchElaborator = Elaborator $ \inMap regs _opAny kConts ->
+  -- Unpack the body and recovery handler regions from the region array
   let !(Identity bodyRegAny) = indexSmallArray (let RowRep (Rep _ arr) = regs in arr) 0
       !(Region bodyPipe) = unsafeCoerce# bodyRegAny
       !(Identity handlerRegAny) = indexSmallArray (let RowRep (Rep _ arr) = regs in arr) 1
       !(Region handlerPipe) = unsafeCoerce# handlerRegAny
       !targetTag# = case constructorIndex @_ @l @ef of W# w# -> w#
+      -- Rewrite matching Throw nodes in the body pipe into the handler pipe
       !transformedBody = catchWalk targetTag# (\_err -> Eff (unsafeCoerce# handlerPipe)) (unsafeCoerce# bodyPipe)
       !(Identity retContAny) = indexSmallArray (let RowRep (Rep _ arr) = kConts in arr) 0
       !(BranchCont retK) = unsafeCoerce# retContAny
@@ -386,6 +446,14 @@ readerHandler env = mkEffHandler $ \case
 
 {- |
 Execute a pure 't:Eff' computation supplying an environment @r@.
+
+== Operational Mechanics & Invariants
+1. __Zero Allocation Environment Record:__
+   The initial reader environment @r@ is packaged into an unboxed single-element handler record
+   at effect slot @"reader"@ in \(\mathcal{O}(1)\) time.
+2. __Pure Identity Interpretation:__
+   'runEffM' executes the algebraic pipeline against the 'Identity' monad, evaluating
+   the final output value without invoking IO or heap-allocated monad transformer stacks.
 
 See Note [Core Architecture] [ref:note-core-architecture] and
 Note [Zero-Cost Surface Specializations] [ref:note-surface-facades].
@@ -415,6 +483,12 @@ errorHandler = mkEffHandler $ \(Throw err) -> Left err
 
 {- |
 Execute a pure 't:Eff' computation catching errors into 'Either e a'.
+
+== Operational Mechanics & Invariants
+1. __Algebraic Abort Mapping:__
+   An algebraic 'Throw' node maps directly to 'Left err' inside the 'Either e' carrier.
+2. __Pure Termination:__
+   Successful completion maps to 'Right a' with zero intermediate wrapper allocations.
 
 See Note [Core Architecture] [ref:note-core-architecture] and
 Note [Zero-Cost Surface Specializations] [ref:note-surface-facades].

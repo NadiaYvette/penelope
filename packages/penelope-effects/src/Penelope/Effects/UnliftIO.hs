@@ -32,6 +32,26 @@ across dynamic evaluation contexts:
 
 See Note [Core Architecture] [ref:note-core-architecture] and
 Note [Zero-Cost Surface Specializations] [ref:note-surface-facades].
+
+{- Note [Sound Scoped Resource Management and Exception Masking Architecture]
+Managing external resources (file descriptors, network sockets, database connections)
+in algebraic effect engines requires absolute cleanup guarantees:
+- If an inner computation throws an algebraic error ('ThrowEff') or a native GHC exception,
+  the allocated resource must not leak.
+- If an asynchronous exception arrives (e.g. 'ThreadKilled' or timeout), acquisition and
+  release routines must execute with asynchronous exceptions masked.
+
+In Penelope:
+1. 'Bracket' is an $(m,n,k,r)$-ary higher-order node enclosing three distinct regions:
+   @"alloc"@ (resource acquisition), @"body"@ (consumer workflow), and @"release"@ (cleanup).
+2. During Phase 1 ('elaborateAll'), 'bracketElaborator' lowers these three regions into
+   an exception-safe execution ladder, ensuring that cleanup runs unconditionally upon
+   normal completion or abortive branch exits.
+3. 'Mask' and 'Unmask' provide delimited regions where asynchronous exceptions are held
+   pending, guaranteeing atomicity during critical hardware and IO state transitions.
+4. 'Provider' acts as an algebraic dependency injector, supplying typed resource records
+   to sub-hypergraphs without global singletons or ambient thread-local variables.
+-}
 -}
 module Penelope.Effects.UnliftIO
   ( -- * Scoped Bracket
@@ -206,6 +226,14 @@ maskIO = E.mask
 
 {- |
 Polycategorical provider dependency injection effect.
+
+== Invariants & Operational Guarantees
+1. __Explicit Injected State:__
+   Unlike global implicit params or thread-local storage, 'Provider' formalizes environment
+   distribution as an algebraic effect passed explicitly through the polycategorical graph.
+2. __Dynamic Scope Delimitation:__
+   Providers can be swapped, mocked, or nested within local sub-hypergraphs without
+   leaking configurations into parent evaluation frames.
 
 See Note [Core Architecture] [ref:note-core-architecture] and
 Note [Zero-Cost Surface Specializations] [ref:note-surface-facades].

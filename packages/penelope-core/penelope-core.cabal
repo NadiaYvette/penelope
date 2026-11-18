@@ -8,7 +8,7 @@ description:
   O(1) jump-table route optimization via Polytropos row indexing,
   categorical frame rule wiring, disjunctive fanout, row weakening,
   higher-order algebraic elaboration, and vector interpretation.
-license: EUPL-1.2
+license: EUPL-1.2 OR Apache-2.0
 license-file: LICENSE
 author: Nadia Yvette Chambers
 maintainer: nadia.yvette.chambers@ik.me

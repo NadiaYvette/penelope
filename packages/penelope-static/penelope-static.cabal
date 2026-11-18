@@ -7,7 +7,7 @@ description:
   polycategorical effect engine. Provides effect dependency graph
   extraction, algebraic circuit simplification, pipeline scheduling,
   and formal verification of institutional satisfaction properties.
-license: EUPL-1.2
+license: EUPL-1.2 OR Apache-2.0
 license-file: LICENSE
 author: Nadia Yvette Chambers
 maintainer: nadia.yvette.chambers@ik.me

@@ -11,6 +11,26 @@
 -- Note [Zero-Cost Surface Specializations] [ref:note-surface-facades], this module provides
 -- the primary user-facing domain interface within the @penelope@ workspace.
 --
+-- {- Note [Penelope Effects Battery Architecture]
+-- The @penelope-effects@ suite organizes algebraic effects into a modular taxonomy:
+--
+-- * Monadic Programming ('Penelope.Effects.Unary'): Exposes 'Eff' for standard sequential
+--   effectful code with automatic Coyoneda leaf substitution.
+-- * Binary Arrow Pipelines ('Penelope.Effects.Binary'): Exposes 'Rope' for dataflow graphs,
+--   ETL streaming, and hardware register networks with $O(1)$ variant routing.
+-- * Delimited Scopes ('Penelope.Effects.Scoped'): Guarantees safe environment handling
+--   ('Reader'/'Local') and error boundaries ('Error'/'Catch') across coroutine resumptions.
+-- * Control Primitives ('Penelope.Effects.Control'): Native multi-region loops ('While'),
+--   disjunctive $k$-way branching ('Switch'), and transaction rollbacks ('Saga').
+-- * Generators ('Penelope.Effects.Coroutine'): Asymmetric coroutines ('Yield'/'Await') and
+--   non-deterministic branching ('NonDet').
+-- * System Resources ('Penelope.Effects.UnliftIO'): Exception-safe resource brackets ('Bracket')
+--   and asynchronous masking ('Mask').
+-- * Concurrency ('Penelope.Effects.Concurrent'): Task workers ('Fork') and join handles ('Async').
+-- * Abstract Machine Convenience ('Penelope.Effects.Interpreter'): Gas budgets ('StepBudget'),
+--   symbol generation ('FreshSym'), and execution tracing ('TraceStep').
+-- -}
+--
 -- == Invariants & Guarantees
 --
 -- 1. __Purity:__ All exported functions are referentially transparent.

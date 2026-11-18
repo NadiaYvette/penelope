@@ -29,6 +29,25 @@ result joining with full exception safety and task isolation.
 
 See Note [Core Architecture] [ref:note-core-architecture] and
 Note [Zero-Cost Surface Specializations] [ref:note-surface-facades].
+
+{- Note [Structured Concurrency and Task Isolation Architecture]
+Concurrent computation in Penelope treats background workers and asynchronous tasks
+as first-class algebraic effects:
+- 'Fork': Spawns an isolated computation in the background, executing concurrently
+  without blocking the parent thread.
+- 'Async': Spawns a computation returning a typed 'AsyncHandle a' that can be awaited
+  later via 'waitEff' or polled via 'pollEff'.
+- 'Cancel': Cancels a running asynchronous task cleanly, sending a termination signal
+  and unblocking waiting threads.
+
+By routing concurrent actions through Penelope's vectorized handler dispatch:
+1. Each spawned worker receives an isolated copy of the parent's register frame,
+   preventing unsynchronized concurrent read/write races on unboxed payload slots.
+2. Unhandled exceptions in background workers are captured and re-thrown inside
+   the awaiting parent thread upon 'waitEff', upholding structured concurrency invariants.
+3. In-flight tasks can be supervised and cancelled en masse when an enclosing scope
+   terminates or aborts.
+-}
 -}
 module Penelope.Effects.Concurrent
   ( -- * Concurrent Effect & Handles

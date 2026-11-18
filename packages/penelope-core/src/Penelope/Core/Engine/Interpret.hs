@@ -26,6 +26,23 @@ Provides Phase 2 bulk vector-dispatched algebraic interpretation over first-orde
 
 See Note [Two-Phase Weaving and Unweaving] [ref:note-two-phase-engine] and
 Note [Institutional Satisfaction and Zero-Traversal Weakening] [ref:note-satisfaction-weakening].
+
+{- Note [Bulk Vector-Dispatched Algebraic Interpretation Architecture]
+Phase 2 represents the "unweaving" phase of Penelope's two-phase engine:
+1. Higher-order effects have already been unraveled by Phase 1 ('elaborateAll') into
+   first-order algebraic operations ('OpF'), pure transforms ('LiftPure'), and wire
+   routes ('Route').
+2. Handlers for all active effects are supplied as a vectorized record ('Handlers'),
+   which compiles into a contiguous 'SmallArray' of function pointers.
+3. When 'interpretAll' visits an 'OpF' node:
+   - The effect opcode (@tag#@) is converted to an unboxed machine integer in $O(1)$.
+   - The corresponding handler closure is retrieved directly from the handler array
+     without type-class dictionary lookup or linear signature search.
+   - The operation payload is unpacked and applied to the handler, which invokes
+     the continuation on the designated exit branch.
+4. 'runPenelopePure' specializes this process for pure, closed terms, executing
+   directly to a final 'Record outs' frame without monad allocations.
+-}
 -}
 module Penelope.Core.Engine.Interpret
   ( -- * Carrier Abstraction
@@ -132,6 +149,19 @@ into the handler record, with zero linear search cascades.
 
 Contravariant handler reduct gathering via 'gatherRecord' adapts outer handlers to inner
 scopes across 'ScopeRow' boundaries in \(O(|ef_{sub}|)\) time without walking the inner sub-tree.
+
+== Execution Pipeline & Invariants
+1. __Branchless Opcode Indexing:__
+   The unboxed machine word tag (@tag#@) directly addresses the handler array slot via
+   'indexSmallArray arr (I# (word2Int# tag#))'. Eliminates @if-then-else@ cascades and
+   dynamic dictionary lookups entirely.
+2. __Contravariant Scope Adaptation:__
+   When encountering 'ScopeRow _ efMorph subPipe', the enclosing handler record is projected
+   to the inner effect signature via 'gatherRecord efMorph handlers' in \(\mathcal{O}(|ef_{sub}|)\)
+   time, preserving the categorical satisfaction condition of institutions.
+3. __Direct Continuation Weaving:__
+   Continuation leaves are recursively mapped to target carrier @m@ via 'rmapFused',
+   producing fused algebraic carriers with zero intermediate heap-allocated AST nodes.
 
 See Note [Two-Phase Weaving and Unweaving] [ref:note-two-phase-engine] and
 Note [Institutional Satisfaction and Zero-Traversal Weakening] [ref:note-satisfaction-weakening].

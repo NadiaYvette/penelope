@@ -5,12 +5,23 @@ synopsis: 2LTT Staging & OrganIR Lowering Pipeline for Penelope
 description:
   2-Level Type Theory staging engine lowering high-level Penelope ASTs
   to freestanding linear kernel and backend plugins.
-license: EUPL-1.2
+license: EUPL-1.2 OR Apache-2.0
+license-file: LICENSE
 author: Nadia Yvette Chambers
 maintainer: nadia.yvette.chambers@ik.me
 category: Control
+homepage: https://github.com/NadiaYvette/penelope
+bug-reports: https://github.com/NadiaYvette/penelope/issues
+extra-doc-files:
+  README.md
+  CHANGELOG.md
 build-type: Simple
 tested-with: GHC == 9.14.1
+
+source-repository head
+  type: git
+  location: https://github.com/NadiaYvette/penelope
+  subdir: packages/penelope-stage
 
 library
   exposed-modules:
@@ -32,7 +43,7 @@ library
     text >= 2.0 && < 2.2,
     containers >= 0.6 && < 0.9,
     primitive >= 0.9 && < 0.10,
-    penelope-core,
+    penelope-core >= 0.1.1.0 && < 0.2,
     polytropos-core >= 0.1 && < 0.2
 
 test-suite tests
@@ -46,7 +57,7 @@ test-suite tests
     hspec >= 2.11 && < 2.12,
     containers >= 0.6 && < 0.9,
     text >= 2.0 && < 2.2,
-    penelope-core,
+    penelope-core >= 0.1.1.0 && < 0.2,
     penelope-stage,
     polytropos-core >= 0.1 && < 0.2,
     polytropos-plugin >= 0.1 && < 0.2

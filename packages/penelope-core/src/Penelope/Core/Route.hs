@@ -18,6 +18,22 @@ This module provides smart constructors and fusion routines for pure port wire
 permutations over Polytropos 't:RowMorph' structures.
 
 See Note [Reified Row Morphisms and Gather-Scatter] [ref:note-row-morph-routing].
+
+{- Note [Pure Port Wire Routing and Identity Peephole Optimization]
+In a polycategorical computation, pure dataflow between stages is modeled as wire permutations
+connecting output registers of the producer to input registers of the consumer.
+
+Penelope optimizes pure routing using unboxed 'RowMorph' arrays:
+1. **Zero-Copy Reified Permutations:** Rather than executing closures that copy field by field,
+   'Route' stores a flat 'PrimArray Int' of source indices. Reified gathering evaluates
+   in a tight unboxed loop ('gatherRep').
+2. **Peephole Route Fusion ('fuseRoute'):** When two 'Route' stages are composed sequentially
+   (@Route m1 >>> Route m2@), they are fused immediately into a single stage
+   @Route (composeRowMorph m1 m2)@.
+3. **Identity Elision ('isIdentityRowMorph'):** If a synthesized row morphism maps index $i \mapsto i$
+   for all $0 \le i < n$, 'isIdentityRowMorph' detects this in $O(n)$ time. The composition engine
+   ('preComposeRoute') completely drops the stage, yielding zero runtime overhead.
+-}
 -}
 module Penelope.Core.Route
   ( -- * Smart Constructors

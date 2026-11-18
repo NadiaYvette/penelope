@@ -27,6 +27,30 @@ Portability : non-portable (GHC extensions)
 Provides a standard unary monadic interface ('t:Eff') over Penelope's polycategorical core.
 
 See Note [Zero-Cost Surface Specializations] [ref:note-surface-facades].
+
+{- Note [Heftia Eff Unary Monad Facade Architecture]
+While Penelope's native $(m,n,k,r)$-ary polycategorical substrate excels at multi-wire
+circuits and variant branching, standard application code is predominantly monadic.
+The 'Eff' monad provides an ergonomic, zero-cost unary projection:
+
+@
+  newtype Eff eh ef a = Eff
+    { unEff :: Penelope eh ef '["in" ':= ()] '["out" ':= a]
+    }
+@
+
+Key properties of this design:
+1. **Zero Runtime Packaging Overhead:** Unlike free or freer monads that construct deep
+   right-associated trees of continuation closures ('Bind (Free f) k'), 'Eff' directly
+   constructs Penelope's flat representation.
+2. **Automatic Elaboration:** Computations written in 'Eff' retain access to both
+   first-order effects (@ef@) and higher-order scoped regions (@eh@).
+3. **Monadic Bind ('>>='):** Sequences computations using 'seqPenelope', automatically
+   wiring the output of step 1 into the input register of step 2 with Coyoneda leaf fusion.
+4. **Vectorized Handling:** When dispatched via 'runEff' or 'runEffM', effect operations
+   resolve through the vectorized jump-table engine, delivering performance matching
+   monad-transformer stacks without transformer layering.
+-}
 -}
 module Penelope.Effects.Unary
   ( -- * Unary Monad Facade
@@ -126,6 +150,17 @@ bindEff (Eff p) k =
 Inject a first-order unary algebraic effect into 't:Eff'.
 Resolves the constructor tag in \(O(1)\) at compile time via 'ConstructorIndex'.
 
+== Invariants & Operational Semantics
+1. __Compile-Time Opcode Resolution:__
+   The symbolic label @l@ is mapped to a static unboxed machine word (@tag#@) at compile
+   time by the Polytropos typechecker plugin, generating zero runtime dictionary lookups.
+2. __Zero Input Wiring:__
+   First-order unary operations in 'Eff' take no explicit input registers, utilizing
+   an empty gather row morphism ('unsafeMkRowMorph []').
+3. __Direct Continuation Leaf:__
+   A single singleton return branch continuation (@ret@) routes the resulting value
+   directly into the caller's continuation pipeline.
+
 See Note [Zero-Cost Surface Specializations] [ref:note-surface-facades].
 -}
 {-# INLINE sendEff #-}
@@ -166,6 +201,15 @@ type EffHandlers ef m = Record (MapRow (Handler '[] (FrameKleisli m)) ef)
 
 {- |
 Construct an 'EffHandler' from a standard unary interpreter function.
+
+== Interoperability & Invariants
+1. __Adapter Homomorphism:__
+   Lifts a conventional monad-transformer or effect-handler arrow @(forall a. sig a -> m a)@
+   into a polycategorical 'Handler' without altering evaluation semantics.
+2. __Dynamic Unboxing:__
+   The incoming operation payload is coerced into @sig Any@ and executed within @m@.
+   Upon return, the result is packaged into a temporary frame and passed to the return
+   continuation @retK@ without heap-allocated intermediate wrappers.
 
 See Note [Zero-Cost Surface Specializations] [ref:note-surface-facades].
 -}

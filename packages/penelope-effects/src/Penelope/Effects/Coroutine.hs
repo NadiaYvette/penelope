@@ -31,6 +31,27 @@ Provides delimited continuations with frame suspension and resumption:
 
 See Note [Core Architecture] [ref:note-core-architecture] and
 Note [Zero-Cost Surface Specializations] [ref:note-surface-facades].
+
+{- Note [Delimited Coroutines and Non-Deterministic Branch Resumption Architecture]
+Delimited control and asymmetric coroutines allow a computation to pause midway through
+its execution, yielding intermediate values or awaiting fresh inputs from a caller:
+
+1. **Yield and Await:**
+   - 'yield': Emits an intermediate value of type @y@ to the consumer and pauses,
+     capturing the rest of the generator as a reified continuation ('Suspension').
+   - 'await': Requests an incoming value of type @a@ from the producer, pausing until
+     data is supplied.
+
+2. **Zero-Allocation Generator Stepping:**
+   Unlike traditional lazy lists that allocate a chain of cons cells on the heap,
+   'runGenerator' steps the coroutine directly. When paused, the active state resides
+   in the unboxed continuation closure, requiring zero heap allocations per step.
+
+3. **Non-Determinism ('NonDet'):**
+   Explores multiple execution paths ('choose', 'empty'). Because Penelope natively supports
+   $k$ disjunctive exit channels, non-deterministic branching forks cleanly without
+   accumulating unbounded lists of thunks or leaking memory across discarded branches.
+-}
 -}
 module Penelope.Effects.Coroutine
   ( -- * Coroutine & Suspension
@@ -134,6 +155,11 @@ await ::
 await = send @l Await
 
 -- | Simple internal state monad for pure generator evaluation.
+--
+-- == Invariants
+-- Accumulates yielded values in an internal list without IO or mutable cells.
+-- The state accumulator preserves evaluation order by prepending yields and
+-- reversing upon final return in 'runGenerator'.
 newtype GenState s a = GenState { runGenState :: s -> (a, s) }
 
 instance Functor (GenState s) where
@@ -210,6 +236,14 @@ data NonDet :: PolyEffect
 
 {- |
 Unary effect GADT representing non-deterministic choice points.
+
+== Operational Mechanics & Invariants
+1. __Branch Point Multiplexing:__
+   'Branch' yields a boolean value representing two parallel execution possibilities.
+   Under 'nonDetHandler', both branches are explored via the list monad without thunk accumulation.
+2. __Zero-Pruning ('Empty'):__
+   'Empty' represents an aborted execution path, translating directly to the empty list '[]'
+   and terminating the current branch without leaking state to sibling paths.
 
 See Note [Core Architecture] [ref:note-core-architecture] and
 Note [Zero-Cost Surface Specializations] [ref:note-surface-facades].

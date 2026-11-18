@@ -26,6 +26,23 @@ effects into pure first-order operations.
 
 See Note [Two-Phase Weaving and Unweaving] [ref:note-two-phase-engine] and
 Note [Institutional Satisfaction and Zero-Traversal Weakening] [ref:note-satisfaction-weakening].
+
+{- Note [Single-Pass Bottom-Up Higher-Order Effect Elaboration Architecture]
+Phase 1 represents the "weaving" phase of Penelope's two-phase engine:
+1. Penelope terms may contain higher-order operations ('OpH'), such as 'Local', 'Catch',
+   'While', and 'Saga', which encapsulate nested sub-hypergraphs ('Region').
+2. Rather than threading stateful interpreter monads through nested continuations,
+   'elaborateAll' traverses the term bottom-up in a single pass.
+3. For every 'OpH' node:
+   - Nested regions are recursively elaborated first, guaranteeing bottom-up normalization.
+   - The corresponding higher-order elaborator is retrieved in $O(1)$ from the
+     'Elaborators' vector.
+   - The elaborator rewires the scoped region into a flat constellation of first-order
+     operations ('OpF'), reified row morphisms ('Route'), and lifted pure transforms ('LiftPure').
+4. The output is a term of type 'Penelope \'[] ef ins outs', completely free of
+   higher-order operations and ready for direct vector interpretation (Phase 2)
+   or backend staging (GCC -fgimple, MLIR).
+-}
 -}
 module Penelope.Core.Engine.Elaborate
   ( -- * Elaborator Abstraction
@@ -97,6 +114,18 @@ Polytropos 'Record' of elaborators.
 
 Contravariant reduct gathering via 'gatherRecord' adapts outer elaborators to inner
 scopes across 'ScopeRow' boundaries in \(O(|eh_{sub}|)\) time without walking the inner sub-tree.
+
+== Operational Pipeline & Invariants
+1. __Bottom-Up Region Normalization:__
+   For every 'OpH' node, enclosed sub-hypergraphs ('Region') are recursively elaborated
+   first, ensuring that inner scopes are fully flattened before the outer elaborator transforms them.
+2. __Zero-Allocation Tag Dispatch:__
+   The unboxed machine word (@tag#@) addresses the elaborator record directly via
+   @indexSmallArray arr (I# (word2Int# tag#))@, incurring zero dynamic dictionary lookup overhead.
+3. __Contravariant Scope Adaptation:__
+   When passing through 'ScopeRow ehMorph efMorph subPipe', 'gatherRecord' adapts the parent
+   elaborator vector to the inner signature in \(\mathcal{O}(|eh_{sub}|)\) time, satisfying
+   the institutional satisfaction condition with zero node rewriting.
 
 See Note [Two-Phase Weaving and Unweaving] [ref:note-two-phase-engine] and
 Note [Institutional Satisfaction and Zero-Traversal Weakening] [ref:note-satisfaction-weakening].

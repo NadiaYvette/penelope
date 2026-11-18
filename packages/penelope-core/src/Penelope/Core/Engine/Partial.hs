@@ -29,6 +29,52 @@ Provides partial effect peeling ('interpretSub'), lowering a subset of first-ord
 operations (@efSub@) while leaving residual unhandled effects (@efRem@) intact in the syntax tree.
 
 See Note [Two-Phase Weaving and Unweaving] [ref:note-two-phase-engine].
+
+{- Note [Layered Effect Peeling and Partial Interpretation]
+Standard algebraic effect handlers assume an "all-or-nothing" interpretation model:
+the entire effect signature is dispatched to a base monad (like 'IO' or 'Identity')
+in a single pass. However, complex multi-tier systems require partial or staged interpretation:
+
+1. A sandboxed business-logic layer handles domain effects (e.g. 'State', 'Reader')
+   in memory, but leaves system-level effects (e.g. 'Database', 'Network') untouched.
+2. An optimization pass compiles pure sub-circuits into GCC -fgimple or MLIR SSA blocks,
+   residualizing effect operations that require external JIT handlers.
+
+'Penelope.Core.Engine.Partial' achieves this through 'interpretSub' and 'PartitionPlan':
+- At compile-time, 'RowPartition' splits the effect row into handled effects @efSub@
+  and residual effects @efRem@.
+- A fast unboxed lookup table ('PartitionPlan') maps every original effect opcode
+  either to its index in the handler vector (if handled) or to its new index in the
+  residual row (if residualized).
+- 'interpretSub' walks the hypergraph: handled operations evaluate effectfully into
+  carrier continuations, while unhandled operations are faithfully reconstructed as
+  residual 'OpF' nodes.
+-}
+
+{- Note [Staged Effect Residualization and Code Generation Partitioning]
+In heterogeneous compilation pipelines (e.g. compiling to freestanding Linux kernel modules,
+eBPF bytecode, or WebAssembly), some effect operations can be fully evaluated or staged away
+at compile time, while others must be delegated to runtime host interfaces:
+
+1. **Staged Normalization:**
+   Effects representing compiler metadata, gas/fuel accounting ('Fuel'), or local configuration
+   ('Reader') can be interpreted completely during staging via 'interpretSub'.
+   The resulting residual term 'Penelope \'[] efRem ins outs' is stripped of those effects,
+   shrinking the required handler vector and eliminating dispatch branches.
+
+2. **Opcode Re-Indexing Invariant:**
+   When an unhandled operation 'OpF tag# inMap opAny conts' is preserved in the residual term,
+   its original constructor tag @tag#@ (which corresponded to its position in @efFull@)
+   must be re-indexed to match its new position in @efRem@.
+   'PartitionPlan' accomplishes this in $O(1)$ by storing @-1 - newIndex@ in 'ppLookup'.
+   The decoder @remIdx# = int2Word# (-1 - entry)@ reconstructs the valid residual opcode
+   with zero arithmetic branching.
+
+3. **Regional Invariance Across ScopeRow Boundaries:**
+   When partial interpretation crosses into a regional 'ScopeRow' envelope, 'goInScope'
+   composes the regional embedding morphism with the ambient partition plan, ensuring that
+   locally scoped effects are correctly classified as handled or residual.
+-}
 -}
 module Penelope.Core.Engine.Partial
   ( -- * Compile-Time Row Partitioning
@@ -81,6 +127,17 @@ data PartitionPlan (sub :: RowOf k) (rem :: RowOf k) (full :: RowOf k) = Partiti
   }
 
 -- | Synthesizes an unboxed lookup array from compile-time row morphisms.
+{- |
+Construct a 'PartitionPlan' from explicit embedding row morphisms @sub@ and @rem@.
+
+== Algorithm & Invariants
+1. Allocates an unboxed 'PrimArray' of size @|sub| + |rem|@ initialized to sentinel values.
+2. For each index @k@ in @sub@, stores @k@ at index @arrSub[k]@.
+3. For each index @j@ in @rem@, stores @-1 - j@ at index @arrRem[j]@.
+4. The resulting lookup array enables \(\mathcal{O}(1)\) branchless classification of any opcode tag.
+
+See Note [Two-Phase Weaving and Unweaving] [ref:note-two-phase-engine].
+-}
 {-# INLINE mkPartitionPlan #-}
 mkPartitionPlan ::
   RowMorph sub full
@@ -132,6 +189,20 @@ leaving residual effects @efRem@ intact in the syntax tree.
 Dispatches each target effect via \(O(1)\) unboxed lookup in the partition table,
 invoking the provided handler, while re-tagging unhandled residual operations to @efRem@.
 
+== Operational Pipeline & Invariants
+1. __Bipolar Partition Lookup Table:__
+   The unboxed primitive array 'ppLookup' encodes the partition state for every opcode index:
+   - Non-negative value @entry >= 0@: Target effect belongs to @efSub@; @entry@ is the
+     direct index into the 'handlers' record.
+   - Negative value @entry < 0@: Unhandled residual effect belonging to @efRem@;
+     the new tag index is derived in \(\mathcal{O}(1)\) time as @newTag# = int2Word# (-1 - entry)@.
+2. __Staged Effect Residualization:__
+   Handled nodes expand into algebraic handler pipelines whose continuation leaves
+   seamlessly re-enter 'interpretSub', while residual nodes are re-tagged and preserved.
+3. __No Dynamic Search Overhead:__
+   Every opcode classification and tag re-indexing step runs in \(\mathcal{O}(1)\) time
+   via unboxed array indexing without string lookups or dictionary passing.
+
 See Note [Two-Phase Weaving and Unweaving] [ref:note-two-phase-engine].
 -}
 {-# INLINE interpretSub #-}
@@ -166,11 +237,13 @@ interpretSub !handlers = go
             !interpretedConts = rmapFused interpCont conts
         in if entry >= 0
              then
+               -- Handled effect: dispatch operation to handler function closure
                let !(RowRep (Rep _ arr)) = handlers
                    !(Identity handlerAny) = indexSmallArray arr entry
                    !(Handler handleFn) = unsafeCoerce# handlerAny
                in handleFn (unsafeCoerce# inMap) opAny interpretedConts
              else
+               -- Residual unhandled effect: decode new opcode and reconstruct OpF node
                let !(I# i#) = -1 - entry
                    !remIdx# = int2Word# i#
                in OpF remIdx# inMap opAny interpretedConts

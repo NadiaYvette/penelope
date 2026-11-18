@@ -7,7 +7,7 @@ description:
   Provides Heftia-style unary monadic facades (Eff), Kernmantle-style
   binary profunctor facades (Flow), scoped algebraic effects,
   concurrency primitives, and high-performance interpretation runners.
-license: EUPL-1.2
+license: EUPL-1.2 OR Apache-2.0
 license-file: LICENSE
 author: Nadia Yvette Chambers
 maintainer: nadia.yvette.chambers@ik.me
