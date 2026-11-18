@@ -1,0 +1,30 @@
+# Fourmolu configuration for standardized ecosystem Haskell repositories
+# Enforces AST-preserving layout for open row lists, record syntax, and operator fixities.
+
+indentation: 2
+column-limit: 100
+function-arrows: trailing
+comma-style: leading
+record-style: aligned
+import-export-style: diff-friendly
+import-grouping: legacy
+indent-wheres: true
+record-brace-space: true
+newlines-between-decls: 1
+haddock-style: multi-line
+let-style: auto
+in-style: right-align
+if-style: indented
+single-constraint-parens: never
+single-deriving-parens: always
+sort-constraints: false
+sort-derived-classes: false
+sort-deriving-clauses: false
+trailing-section-operators: true
+unicode: never
+respectful: true
+
+fixities:
+  - "infixr 5 :="
+  - "infixr 5 .=="
+  - "infixl 8 .#"

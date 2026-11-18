@@ -1,0 +1,78 @@
+# SPDX-License-Identifier: EUPL-1.2
+# Canonical GitHub Actions CI Workflow for penelope
+# Note [Forge-Tiered CI Resource Allocation and Static Gate Partitioning] [ref:note-forge-tiered-ci]
+
+name: CI Verification Harness
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  verify:
+    name: Tagref & Verification Gates
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install Tagref
+        run: |
+          mkdir -p "${HOME}/.local/bin"
+          PREFIX="${HOME}/.local/bin" curl https://raw.githubusercontent.com/stepchowfun/tagref/main/install.sh -LSfs | sh
+          echo "${HOME}/.local/bin" >> $GITHUB_PATH
+
+      - name: Verify Tagref Cross-References
+        run: ./bin/penelope-tagref
+
+      - name: Verify Markdown Links & Anchors
+        run: ./bin/penelope-linkcheck
+
+      - name: Install System Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y bubblewrap sqlite3 z3
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 2>/dev/null || true
+          if [ -d /etc/apparmor.d ]; then
+            printf 'abi <abi/4.0>,\ninclude <tunables/global>\nprofile bwrap /usr/bin/bwrap flags=(unconfined) {\n    userns,\n    include if exists <local/bwrap>\n}\n' | sudo tee /etc/apparmor.d/bwrap >/dev/null || true
+            sudo apparmor_parser -r /etc/apparmor.d/bwrap 2>/dev/null || true
+          fi
+
+      - name: Configure Git for HTTPS submodules
+        run: git config --global url."https://github.com/".insteadOf "git@github.com:"
+
+      - name: Set up Haskell Toolchain
+        uses: haskell-actions/setup@v2
+        with:
+          ghc-version: '9.14.1'
+          cabal-version: '3.18.1.0'
+
+      - name: Install HLint
+        run: |
+          mkdir -p "${HOME}/.local/bin"
+          if ! command -v hlint >/dev/null 2>&1; then
+            curl -sSL https://github.com/ndmitchell/hlint/releases/download/v3.10/hlint-3.10-x86_64-linux.tar.gz | tar -xz -C "${HOME}/.local"
+            ln -sf "${HOME}/.local/hlint-3.10/hlint" "${HOME}/.local/bin/hlint"
+          fi
+          echo "${HOME}/.local/bin" >> $GITHUB_PATH
+
+      - name: Cache Cabal artifacts
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cabal/store
+            dist-newstyle
+          key: ${{ runner.os }}-cabal-${{ hashFiles('cabal.project', '**/*.cabal') }}
+          restore-keys: |
+            ${{ runner.os }}-cabal-
+
+      - name: Build All Packages & Dependencies
+        run: cabal build all --enable-tests
+
+      - name: Verify Comment Density Audit
+        run: ./bin/penelope-cloc --check
+
+      - name: Run Full Physical Verification Gates
+        run: ./bin/penelope-verify

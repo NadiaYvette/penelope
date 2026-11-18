@@ -4,7 +4,7 @@ Pointer file. Canonical sources win on any disagreement.
 
 ## What this repository is
 
-`penelope` — Polytropos-backed (m,n,k,r)-ary polycategorical effect system generalizing Heftia and Kernmantle
+`penelope` — Ecosystem workspace for penelope
 
 ## Read first, in this order
 
@@ -20,10 +20,6 @@ Pointer file. Canonical sources win on any disagreement.
 - [`.agents/rules/code-navigation.md`](.agents/rules/code-navigation.md) — Token-saving funnel (`./tags` symbol jump, targeted slice viewing).
 - [`.agents/rules/compiler-verification.md`](.agents/rules/compiler-verification.md) — Zero-log compiler verification, tests, and zero-contamination.
 - [`.agents/rules/documentation-precedence.md`](.agents/rules/documentation-precedence.md) — Precedence rule ("code wins at runtime; notes corrected regardless").
-- [`.agents/rules/hls-housekeeping.md`](.agents/rules/hls-housekeeping.md) — Zero-token mechanical code repairs via `hls-autoheal`.
-- [`.agents/rules/kioku-context.md`](.agents/rules/kioku-context.md) — Durable memory offloading (`kioku-remember`) and `/compact` cadence.
-- [`.agents/rules/plugin-invariants.md`](.agents/rules/plugin-invariants.md) — TcPlugin literal index evidence and Core AST dictionary synthesis.
-- [`.agents/rules/task-execution.md`](.agents/rules/task-execution.md) — Yamaarashi runner invariants, `executor: auto` preference, and zero-polling discipline.
 
 ## Operational advisories
 

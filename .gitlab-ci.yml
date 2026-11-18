@@ -1,0 +1,18 @@
+# SPDX-License-Identifier: EUPL-1.2
+# GitLab CI configuration for penelope (Framagit, Disroot)
+# Note [Forge-Tiered CI Resource Allocation and Static Gate Partitioning] [ref:note-forge-tiered-ci]
+
+stages:
+  - verify
+
+tagref-check:
+  stage: verify
+  image: debian:bookworm-slim
+  before_script:
+    - apt-get update && apt-get install -y curl git python3
+    - mkdir -p /usr/local/bin
+    - PREFIX=/usr/local/bin curl https://raw.githubusercontent.com/stepchowfun/tagref/main/install.sh -LSfs | sh
+  script:
+    - ./bin/penelope-tagref
+    - ./bin/penelope-linkcheck
+    - ./bin/penelope-cloc --check
