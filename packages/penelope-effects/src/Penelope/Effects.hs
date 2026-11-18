@@ -39,11 +39,13 @@ module Penelope.Effects
   , module Penelope.Effects.UnliftIO
   , module Penelope.Effects.Scoped
   , module Penelope.Effects.Concurrent
+  , module Penelope.Effects.Interpreter
   ) where
 
 import Data.Text (Text)
 import Penelope.Effects.Binary
 import Penelope.Effects.Concurrent
+import Penelope.Effects.Interpreter
 import Penelope.Effects.Control
 import Penelope.Effects.Coroutine
 import Penelope.Effects.Scoped

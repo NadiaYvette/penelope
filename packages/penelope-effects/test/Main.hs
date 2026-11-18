@@ -18,6 +18,7 @@ module Main (main) where
 import Control.Arrow (Arrow (..), ArrowChoice (..), (>>>))
 import Control.Category (Category (..))
 import qualified Control.Concurrent as C
+import qualified Data.Text as T
 import qualified Control.Exception as E
 import Data.Functor.Identity (Identity (..))
 import Data.IORef (modifyIORef', newIORef, readIORef, writeIORef)
@@ -569,3 +570,31 @@ main = hspec $ do
       logEntries `shouldContain` ["worker1-rel"]
       logEntries `shouldContain` ["worker2-acq"]
       logEntries `shouldContain` ["worker2-rel"]
+
+  describe "Penelope.Effects.Interpreter Repertoire" $ do
+    it "verifies StepBudget fuel tracking and exhaustion" $ do
+      fuelRef <- newIORef (5 :: Int)
+      let handler = runStepBudget fuelRef
+          hMap = insertField (Field @"stepBudget") handler emptyRecord
+      let prog :: Eff '[] '["stepBudget" ':= UnaryEffect StepBudget] (Bool, Int, Bool)
+          prog = do
+            ok1 <- consumeStep 3
+            remF <- remainingBudget
+            ok2 <- consumeStep 10
+            pure (ok1, remF, ok2)
+      res <- runEffM hMap prog
+      res `shouldBe` (True, 2, False)
+
+    it "verifies FreshSym non-colliding symbol generation" $ do
+      symRef <- newIORef (1 :: Int)
+      let handler = runFreshSym symRef
+          hMap = insertField (Field @"freshSym") handler emptyRecord
+      let prog :: Eff '[] '["freshSym" ':= UnaryEffect FreshSym] (T.Text, Int, T.Text)
+          prog = do
+            s1 <- freshSymbol "tmp"
+            u <- freshUnique
+            s2 <- freshSymbol "var"
+            pure (s1, u, s2)
+      res <- runEffM hMap prog
+      res `shouldBe` ("tmp_1", 2, "var_3")
+
