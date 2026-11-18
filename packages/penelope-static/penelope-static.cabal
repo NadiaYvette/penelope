@@ -1,6 +1,6 @@
 cabal-version: 3.0
 name: penelope-static
-version: 0.1.0.0
+version: 0.1.1.0
 synopsis: Static Reflection and Cayley Analysis for Penelope Effect Engine
 description:
   Static analysis substrate and Cayley representation for the Penelope

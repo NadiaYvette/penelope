@@ -1,6 +1,6 @@
 cabal-version: 3.0
 name: penelope-stage
-version: 0.1.0.0
+version: 0.1.1.0
 synopsis: 2LTT Staging & OrganIR Lowering Pipeline for Penelope
 description:
   2-Level Type Theory staging engine lowering high-level Penelope ASTs

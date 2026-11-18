@@ -1,6 +1,6 @@
 cabal-version: 3.0
 name: penelope-effects
-version: 0.1.0.0
+version: 0.1.1.0
 synopsis: Effect battery, Heftia and Kernmantle facades for Penelope
 description:
   Domain effect battery and ergonomic programming facades for Penelope.

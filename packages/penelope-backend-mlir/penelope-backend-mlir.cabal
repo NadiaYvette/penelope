@@ -1,6 +1,6 @@
 cabal-version: 3.0
 name: penelope-backend-mlir
-version: 0.1.0.0
+version: 0.1.1.0
 synopsis: MLIR structured dialect code emission backend for Penelope
 description:
   Direct code-generation backend lowering typed Penelope ASTs into
