@@ -1,0 +1,108 @@
+cabal-version:      3.0
+name:               penelope-uring
+version:            0.1.0.0
+synopsis:           StaticPenelope SQE batch fusion planner, FlightTable, and UringSim
+description:
+    StaticPenelope SQE batch fusion planning, ABA-safe 64-bit flight token allocation,
+    deterministic in-memory io_uring simulation, and multi-exit UringOp polycategorical effects.
+license:            EUPL-1.2 OR Apache-2.0
+license-files:      LICENSE
+author:             Nadia Yvette Chambers
+maintainer:         nadia.yvette.chambers@ik.me
+category:           System, Concurrency, Performance
+build-type:         Simple
+extra-doc-files:
+    README.md
+  , CHANGELOG.md
+  , LICENSE
+
+tested-with:
+    GHC == 9.10.3
+  , GHC == 9.12.4
+  , GHC == 9.14.1
+
+source-repository head
+    type:     git
+    location: https://github.com/NadiaYvette/penelope.git
+    subdir:   packages/penelope-uring
+
+flag uring-linux-ffi
+    description: Enable native Linux io_uring FFI calls
+    default:     False
+    manual:      True
+
+common commons
+    default-language:   Haskell2010
+    default-extensions:
+        BangPatterns
+      , DataKinds
+      , DerivingStrategies
+      , FlexibleContexts
+      , FlexibleInstances
+      , GADTs
+      , MultiParamTypeClasses
+      , PolyKinds
+      , RankNTypes
+      , ScopedTypeVariables
+      , TypeApplications
+      , TypeFamilies
+      , TypeOperators
+    ghc-options:
+        -Wall
+        -Wcompat
+        -Wredundant-constraints
+
+library
+    import:             commons
+    hs-source-dirs:     src
+    exposed-modules:
+        Penelope.Uring
+      , Penelope.Uring.Plan
+      , Penelope.Uring.FlightTable
+      , Penelope.Uring.Sim
+      , Penelope.Uring.Effect
+    if flag(uring-linux-ffi)
+        cpp-options:    -DURING_LINUX_FFI
+    build-depends:
+        base >= 4.18 && < 5
+      , bytestring >= 0.11 && < 0.13
+      , containers >= 0.6 && < 0.9
+      , penelope-core >= 0.1.0.0 && < 0.2
+      , penelope-static >= 0.1.0.0 && < 0.2
+      , polytropos-core >= 0.1.0.0 && < 0.2
+      , primitive >= 0.8 && < 0.10
+
+test-suite penelope-uring-test
+    import:             commons
+    type:               exitcode-stdio-1.0
+    hs-source-dirs:     test
+    main-is:            Main.hs
+    ghc-options:
+        -threaded
+        -rtsopts
+        "-with-rtsopts=-N"
+    build-depends:
+        base >= 4.18 && < 5
+      , bytestring >= 0.11 && < 0.13
+      , containers >= 0.6 && < 0.9
+      , penelope-core >= 0.1.0.0 && < 0.2
+      , penelope-static >= 0.1.0.0 && < 0.2
+      , polytropos-core >= 0.1.0.0 && < 0.2
+      , primitive >= 0.8 && < 0.10
+      , penelope-uring
+
+benchmark penelope-uring-bench
+    import:             commons
+    type:               exitcode-stdio-1.0
+    hs-source-dirs:     bench
+    main-is:            Main.hs
+    ghc-options:
+        -threaded
+        -rtsopts
+        "-with-rtsopts=-T"
+    build-depends:
+        base >= 4.18 && < 5
+      , bytestring >= 0.11 && < 0.13
+      , deepseq >= 1.4 && < 1.6
+      , penelope-uring
+      , tasty-bench >= 0.3 && < 0.6

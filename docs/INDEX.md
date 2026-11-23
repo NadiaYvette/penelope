@@ -17,6 +17,8 @@ Welcome to the `penelope` technical documentation corpus.
 - [`PENELOPE_DESIGN.md`](notes/PENELOPE_DESIGN.md) — Canonical design notes.
 - [`DOC_STRATEGY.md`](notes/DOC_STRATEGY.md) — Documentation strategy and precedence rules.
 - [`COMMIT_ATTRIBUTION.md`](notes/COMMIT_ATTRIBUTION.md) — Commit attribution standards.
+- [`IO_URING_RTS_PENELOPE.md`](notes/IO_URING_RTS_PENELOPE.md) — Penelope io_uring runtime subsystem and batch fusion.
+- [`BENCHMARKS.md`](notes/BENCHMARKS.md) — Benchmark reports and performance suites.
 
 ## Active Packages
 

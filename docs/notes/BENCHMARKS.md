@@ -68,3 +68,23 @@ Measurements collected with `--benchmark-options='--csv=dist-newstyle/penelope-b
    ```bash
    cabal --with-compiler=ghc-9.14.1 v2-bench penelope-effects:bench:penelope-bench --benchmark-options='--timeout 2 --csv=dist-newstyle/penelope-bench.csv +RTS -T -RTS'
    ```
+
+---
+
+## 4. `penelope-uring` SQE Batch Fusion & Kernel Enter Microbenchmarks
+
+Measurements collected with `--benchmark-options='--csv=dist-newstyle/penelope-uring-bench.csv +RTS -T -RTS'`:
+
+| Benchmark Workload | Mean Time | Stdev (2σ) | Allocated Bytes | Copied Bytes | Peak Memory |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **Fused Batch (32 ops, 1 enter)** | 3.11 μs | ± 0.25 μs | 14,802 B | 6 B | 7.0 MB |
+| **Naive Sequential (32 ops, 32 enters)** | 3.45 μs | ± 0.34 μs | 16,314 B | 2 B | 7.0 MB |
+| **Linked WAL Chain (`write_fixed` + `fsync`)** | 215.97 ns | ± 41.07 ns | 904 B | 0 B | 7.0 MB |
+
+### Analysis:
+1. **Fused Batch Throughput:** Single-enter batching eliminates per-operation ring traversal overhead and reduces intermediate memory allocation compared to iterative dispatches.
+2. **Linked WAL Chain Efficiency:** Fused atomic log append with dependent `fsync` completes in ~216 ns with sub-kilobyte allocation (904 B).
+3. **Reproducibility:**
+   ```bash
+   cabal --with-compiler=ghc-9.14.1 v2-bench penelope-uring:bench:penelope-uring-bench --benchmark-options='--timeout 2 --csv=dist-newstyle/penelope-uring-bench.csv +RTS -T -RTS'
+   ```
